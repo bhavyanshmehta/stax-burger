@@ -276,7 +276,7 @@ const presets = {
   "Crispy Veg Stack": { topBun: 1, lettuce: 1, tomatoes: 1, onion: 0, pickles: 1, cheese: 0, patty: 1, sauce: 1, bottomBun: 1 }
 };
 
-export default function SignatureBurgers({ onCustomize }) {
+export default function SignatureBurgers({ onCustomize, onAddToCart }) {
   const [activeCategory, setActiveCategory] = useState("signature");
   const [vegOnly, setVegOnly] = useState(false);
   const [nonVegOnly, setNonVegOnly] = useState(false);
@@ -545,7 +545,7 @@ export default function SignatureBurgers({ onCustomize }) {
                           Customize
                         </button>
                         <button
-                          onClick={() => alert(`${item.name} added to cart!`)}
+                          onClick={(e) => onAddToCart && onAddToCart(item, e)}
                           className="bg-[#FF7A00] hover:bg-[#FFB347] text-black rounded-full font-heading font-black text-[9px] uppercase tracking-widest px-4 py-2 flex items-center gap-1 cursor-pointer border-none transition-all duration-300 shadow-sm"
                         >
                           <span>ORDER</span>
@@ -554,7 +554,7 @@ export default function SignatureBurgers({ onCustomize }) {
                       </div>
                     ) : (
                       <button
-                        onClick={() => alert(`${item.name} added to cart!`)}
+                        onClick={(e) => onAddToCart && onAddToCart(item, e)}
                         className="bg-[#FF7A00] hover:bg-[#FFB347] text-black rounded-full font-heading font-black text-[9px] uppercase tracking-widest px-5 py-2.5 flex items-center gap-1.5 cursor-pointer border-none transition-all duration-300 shadow-md"
                       >
                         <span>ORDER NOW</span>

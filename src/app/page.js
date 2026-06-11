@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Flame } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 import Burger3D from "@/components/Burger3D";
 import Hero from "@/components/Hero";
@@ -14,10 +15,156 @@ import MobileApp from "@/components/MobileApp";
 import Locations from "@/components/Locations";
 import Footer from "@/components/Footer";
 import CustomCursor from "@/components/CustomCursor";
+import CartDrawer from "@/components/CartDrawer";
+import CheckoutModal from "@/components/CheckoutModal";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function Home() {
+  const [cart, setCart] = useState([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [toasts, setToasts] = useState([]);
+
+  // Load cart from localStorage on mount
+  useEffect(() => {
+    const savedCart = localStorage.getItem("stax_cart");
+    if (savedCart) {
+      try {
+        setCart(JSON.parse(savedCart));
+      } catch (e) {
+        console.error("Failed to parse saved cart", e);
+      }
+    }
+  }, []);
+
+  // Save cart to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem("stax_cart", JSON.stringify(cart));
+  }, [cart]);
+
+  const addToast = (message) => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3000);
+  };
+
+  const addToCart = (item, event) => {
+    const isCustom = item.id.toString().startsWith("custom-");
+    const cartItemId = isCustom ? item.id : `preset-${item.id}`;
+
+    setCart((prevCart) => {
+      const existing = prevCart.find((i) => i.id === cartItemId);
+      if (existing) {
+        return prevCart.map((i) =>
+          i.id === cartItemId ? { ...i, qty: i.qty + 1 } : i
+        );
+      }
+      return [
+        ...prevCart,
+        {
+          id: cartItemId,
+          name: item.name,
+          price: item.price,
+          image: item.image,
+          qty: 1,
+        },
+      ];
+    });
+
+    addToast(`Added to Cart: ${item.name}`);
+
+    if (event) {
+      triggerFlyAnimation(item.image, event);
+    }
+  };
+
+  const triggerFlyAnimation = (imageUrl, clickEvent) => {
+    if (!clickEvent) return;
+    const flyEl = document.createElement("div");
+    flyEl.style.position = "fixed";
+    flyEl.style.left = `${clickEvent.clientX - 40}px`;
+    flyEl.style.top = `${clickEvent.clientY - 40}px`;
+    flyEl.style.width = "80px";
+    flyEl.style.height = "80px";
+    flyEl.style.backgroundImage = `url(${imageUrl})`;
+    flyEl.style.backgroundSize = "contain";
+    flyEl.style.backgroundRepeat = "no-repeat";
+    flyEl.style.backgroundPosition = "center";
+    flyEl.style.zIndex = "99999";
+    flyEl.style.pointerEvents = "none";
+    flyEl.style.transformOrigin = "center";
+    document.body.appendChild(flyEl);
+
+    const desktopCart = document.getElementById("cart-icon-nav");
+    const floatingCart = document.getElementById("floating-cart-btn");
+    
+    let target = desktopCart;
+    if (!desktopCart || window.getComputedStyle(desktopCart).display === "none") {
+      target = floatingCart;
+    }
+
+    if (target) {
+      const rect = target.getBoundingClientRect();
+      const targetX = rect.left + rect.width / 2 - 40;
+      const targetY = rect.top + rect.height / 2 - 40;
+
+      gsap.to(flyEl, {
+        left: targetX,
+        top: targetY,
+        scale: 0.1,
+        rotation: 360,
+        opacity: 0.3,
+        duration: 0.8,
+        ease: "power2.inOut",
+        onComplete: () => {
+          if (flyEl.parentNode) {
+            flyEl.parentNode.removeChild(flyEl);
+          }
+          gsap.fromTo(target, 
+            { scale: 1 },
+            { scale: 1.3, duration: 0.15, yoyo: true, repeat: 1, ease: "back.out(1.7)" }
+          );
+        }
+      });
+    } else {
+      gsap.to(flyEl, {
+        opacity: 0,
+        scale: 0,
+        duration: 0.5,
+        onComplete: () => {
+          if (flyEl.parentNode) {
+            flyEl.parentNode.removeChild(flyEl);
+          }
+        }
+      });
+    }
+  };
+
+  const updateCartQty = (itemId, delta) => {
+    setCart((prevCart) =>
+      prevCart
+        .map((item) => {
+          if (item.id === itemId) {
+            const newQty = item.qty + delta;
+            return { ...item, qty: newQty };
+          }
+          return item;
+        })
+        .filter((item) => item.qty > 0)
+    );
+  };
+
+  const removeFromCart = (itemId) => {
+    setCart((prevCart) => prevCart.filter((item) => item.id !== itemId));
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
   const [activeCustomizer, setActiveCustomizer] = useState(null);
   const [activeBurgerName, setActiveBurgerName] = useState("Custom Stack");
   const [activeShowcase, setActiveShowcase] = useState(false);
@@ -280,7 +427,10 @@ export default function Home() {
       </div>
 
       {/* Global Minimal Navigation Header */}
-      <Hero />
+      <Hero
+        cartCount={cart.reduce((acc, curr) => acc + curr.qty, 0)}
+        onCartOpen={() => setIsCartOpen(true)}
+      />
 
       {/* Narrative Flow Overlays (Hero + 4 Main Sections) */}
       <div className="relative z-10 w-full bg-transparent">
@@ -419,6 +569,7 @@ export default function Home() {
               setActiveCustomizer(config);
               document.getElementById("customizer-section")?.scrollIntoView({ behavior: "smooth" });
             }}
+            onAddToCart={addToCart}
           />
         </div>
 
@@ -435,6 +586,7 @@ export default function Home() {
             activeBurgerName={activeBurgerName}
             setActiveBurgerName={setActiveBurgerName}
             setHoveredIngredient={setHoveredIngredient}
+            onAddToCart={addToCart}
           />
         </div>
 
@@ -486,6 +638,48 @@ export default function Home() {
 
       </div>
 
+      {/* Toast Notifications */}
+      <div className="fixed bottom-24 left-6 z-[200] flex flex-col gap-3 pointer-events-none">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, x: -50, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -50, scale: 0.9, transition: { duration: 0.2 } }}
+              className="bg-black/80 backdrop-blur-md border border-[#FF7A00]/30 shadow-[0_4px_20px_rgba(255,122,0,0.15)] rounded-2xl px-5 py-3.5 flex items-center gap-3 text-white pointer-events-auto"
+            >
+              <div className="w-5 h-5 rounded-full bg-[#FF7A00] flex items-center justify-center">
+                <Flame className="w-3.5 h-3.5 text-black fill-current" />
+              </div>
+              <span className="font-heading font-black text-xs uppercase tracking-wider">
+                {toast.message}
+              </span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Cart Drawer Panel */}
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cartItems={cart}
+        onUpdateQty={updateCartQty}
+        onRemoveItem={removeFromCart}
+        onCheckout={() => {
+          setIsCartOpen(false);
+          setIsCheckoutOpen(true);
+        }}
+      />
+
+      {/* Checkout Modal */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        cartItems={cart}
+        onClearCart={clearCart}
+      />
     </main>
   );
 }

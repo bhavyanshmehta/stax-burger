@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Flame, Menu, X, ChevronDown, GlassWater, Sparkles, Tag, ShieldCheck, MapPin, Award, ArrowRight } from "lucide-react";
 import gsap from "gsap";
 
-export default function Hero() {
+export default function Hero({ cartCount = 0, onCartOpen }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [prevDropdown, setPrevDropdown] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -498,6 +498,61 @@ export default function Hero() {
 
           {/* Right CTA / Order Indicator + Hamburger */}
           <div className="flex items-center gap-4">
+            {/* Desktop Cart Button */}
+            <button
+              id="cart-icon-nav"
+              onClick={onCartOpen}
+              className="hidden md:flex relative w-10 h-10 rounded-full border border-white/10 items-center justify-center text-white/80 hover:text-[#FF7A00] hover:border-[#FF7A00]/30 bg-black/40 hover:bg-[#FF7A00]/5 cursor-pointer transition-all duration-300"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="8" cy="21" r="1" />
+                <circle cx="19" cy="21" r="1" />
+                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+              </svg>
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#FF7A00] text-black font-heading font-black text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(255,122,0,0.6)]">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+
+            {/* Mobile Cart Button */}
+            <button
+              onClick={onCartOpen}
+              className="md:hidden relative w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white/80 hover:text-[#FF7A00] hover:border-[#FF7A00]/30 bg-black/40 hover:bg-[#FF7A00]/5 cursor-pointer transition-all duration-300"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="8" cy="21" r="1" />
+                <circle cx="19" cy="21" r="1" />
+                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+              </svg>
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#FF7A00] text-black font-heading font-black text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(255,122,0,0.6)]">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+
             <a
               href="#customizer-section"
               onClick={() => setActiveDropdown(null)}
@@ -617,24 +672,32 @@ export default function Hero() {
 
       {/* Floating Action Cart Button (Bottom Right) */}
       <button
-        onClick={() => alert("Redirecting to your cart...")}
-        className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-[#FF7A00] hover:bg-[#FFB347] hover:scale-110 flex items-center justify-center text-black shadow-[0_4px_20px_rgba(255,122,0,0.4)] transition-all duration-300 border-none cursor-pointer"
+        id="floating-cart-btn"
+        onClick={onCartOpen}
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-[#FF7A00] hover:bg-[#FFB347] hover:scale-110 flex items-center justify-center text-black shadow-[0_4px_25px_rgba(255,122,0,0.45)] transition-all duration-300 border-none cursor-pointer"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="8" cy="21" r="1" />
-          <circle cx="19" cy="21" r="1" />
-          <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
-        </svg>
+        <div className="relative">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="8" cy="21" r="1" />
+            <circle cx="19" cy="21" r="1" />
+            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+          </svg>
+          {cartCount > 0 && (
+            <span className="absolute -top-3.5 -right-3.5 bg-white text-black font-heading font-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-black shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
+              {cartCount}
+            </span>
+          )}
+        </div>
       </button>
     </>
   );

@@ -34,6 +34,7 @@ export default function Customizer({
   activeBurgerName,
   setActiveBurgerName,
   setHoveredIngredient,
+  onAddToCart,
 }) {
   const containerRef = useRef(null);
   const [config, setConfig] = React.useState(defaultConfig);
@@ -187,7 +188,18 @@ export default function Customizer({
               </div>
 
               <button
-                onClick={() => alert(`Custom Stack added to cart! Price: ₹${calculateTotal()}`)}
+                onClick={(e) => {
+                  if (onAddToCart) {
+                    onAddToCart({
+                      id: `custom-${Date.now()}`,
+                      name: activeBurgerName === "Custom Stack" ? "Custom Stack" : `Custom ${activeBurgerName}`,
+                      desc: "Custom stack built in Grill Lab Workshop.",
+                      price: `₹${calculateTotal()}`,
+                      image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=800&auto=format&fit=crop",
+                      config: { ...config }
+                    }, e);
+                  }
+                }}
                 className="flex items-center gap-3 bg-gradient-to-r from-[#FF7A00] to-[#FFB347] hover:scale-105 text-black font-heading font-black text-xs uppercase tracking-widest px-6 py-3.5 rounded-2xl shadow-[0_4px_20px_rgba(255,122,0,0.25)] transition-all duration-300 cursor-pointer border-none"
               >
                 <ShoppingBag className="w-4 h-4" />
