@@ -398,7 +398,7 @@ function HUDLabel({ labelName, isLeft, show, index }) {
   );
 }
 
-function StackGroup({ burgerStateRef, activeCustomizer, activeShowcase, activeIngredients, hoveredIngredient, isMobile }) {
+function StackGroup({ burgerStateRef, activeCustomizer, activeShowcase, activeIngredients, hoveredIngredient }) {
   const groupRef = useRef();
   const cachedChildrenRef = useRef({}); // O(1) object lookup cache for frame animations
   const pattyBump = useRef();
@@ -410,30 +410,6 @@ function StackGroup({ burgerStateRef, activeCustomizer, activeShowcase, activeIn
   const lettuceGeoRef = useRef();
   const cheeseGeoRef = useRef();
   const pattyGeoRef = useRef();
-
-  const BurgerMaterial = ({ color, roughness, metalness, clearcoat, transmission, thickness, ...props }) => {
-    if (isMobile) {
-      return (
-        <meshStandardMaterial
-          color={color}
-          roughness={roughness}
-          metalness={metalness || 0}
-          {...props}
-        />
-      );
-    }
-    return (
-      <meshPhysicalMaterial
-        color={color}
-        roughness={roughness}
-        metalness={metalness}
-        clearcoat={clearcoat}
-        transmission={transmission}
-        thickness={thickness}
-        {...props}
-      />
-    );
-  };
 
   // Individual layer visual animation states tracked for Customizer interactions
   const layerVisualsRef = useRef({
@@ -822,26 +798,11 @@ function StackGroup({ burgerStateRef, activeCustomizer, activeShowcase, activeIn
         <SesameSeeds />
       </group>
 
-      {/* 1. TOP BUN */}
-      <group name="topBun">
-        <mesh castShadow={!isMobile} receiveShadow={!isMobile} scale={[1, 0.65, 1]}>
-          <sphereGeometry args={isMobile ? [2, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2] : [2, 32, 20, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <BurgerMaterial
-            color={layerConfig.topBun.color}
-            roughness={0.45}
-            metalness={0.0}
-            clearcoat={0.15}
-            clearcoatRoughness={0.4}
-          />
-        </mesh>
-        <SesameSeeds count={isMobile ? 15 : 90} />
-      </group>
-
       {/* 2. CRISP WAVY LETTUCE */}
       <group name="lettuce">
-        <mesh castShadow={!isMobile} receiveShadow={!isMobile}>
-          <cylinderGeometry ref={lettuceGeoRef} args={isMobile ? [2.05, 2.05, 0.08, 16, 1] : [2.05, 2.05, 0.08, 64, 4]} />
-          <BurgerMaterial
+        <mesh castShadow receiveShadow>
+          <cylinderGeometry ref={lettuceGeoRef} args={[2.05, 2.05, 0.08, 64, 4]} />
+          <meshPhysicalMaterial
             color={layerConfig.lettuce.color}
             roughness={0.65}
             clearcoat={0.25}
@@ -854,9 +815,9 @@ function StackGroup({ burgerStateRef, activeCustomizer, activeShowcase, activeIn
 
       {/* 3. SHINY SLICED TOMATOES */}
       <group name="tomatoes">
-        <mesh position={[-0.65, 0, 0.25]} rotation={[0.05, 0, 0.08]} castShadow={!isMobile} receiveShadow={!isMobile}>
-          <cylinderGeometry args={isMobile ? [0.85, 0.85, 0.15, 10] : [0.85, 0.85, 0.15, 24]} />
-          <BurgerMaterial
+        <mesh position={[-0.65, 0, 0.25]} rotation={[0.05, 0, 0.08]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.85, 0.85, 0.15, 24]} />
+          <meshPhysicalMaterial
             color={layerConfig.tomatoes.color}
             roughness={0.12} // glossy wet surface
             clearcoat={0.7}
@@ -864,9 +825,9 @@ function StackGroup({ burgerStateRef, activeCustomizer, activeShowcase, activeIn
             metalness={0.05}
           />
         </mesh>
-        <mesh position={[0.65, 0, -0.25]} rotation={[-0.05, 0, -0.08]} castShadow={!isMobile} receiveShadow={!isMobile}>
-          <cylinderGeometry args={isMobile ? [0.85, 0.85, 0.15, 10] : [0.85, 0.85, 0.15, 24]} />
-          <BurgerMaterial
+        <mesh position={[0.65, 0, -0.25]} rotation={[-0.05, 0, -0.08]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.85, 0.85, 0.15, 24]} />
+          <meshPhysicalMaterial
             color={layerConfig.tomatoes.color}
             roughness={0.12}
             clearcoat={0.7}
@@ -878,18 +839,18 @@ function StackGroup({ burgerStateRef, activeCustomizer, activeShowcase, activeIn
 
       {/* 4. ONIONS */}
       <group name="onion">
-        <mesh position={[-0.55, 0, 0.35]} rotation={[Math.PI / 2 + 0.1, 0.25, 0]} scale={[1, 1, 0.35]} castShadow={!isMobile}>
-          <torusGeometry args={isMobile ? [0.85, 0.08, 4, 10] : [0.85, 0.08, 8, 24]} />
-          <BurgerMaterial 
+        <mesh position={[-0.55, 0, 0.35]} rotation={[Math.PI / 2 + 0.1, 0.25, 0]} scale={[1, 1, 0.35]} castShadow>
+          <torusGeometry args={[0.85, 0.08, 8, 24]} />
+          <meshPhysicalMaterial 
             color={layerConfig.onion.color} 
             roughness={0.3} 
             transmission={0.25} // translucent onion slices
             thickness={0.2}
           />
         </mesh>
-        <mesh position={[0.45, 0, -0.35]} rotation={[Math.PI / 2 - 0.1, -0.2, 0.45]} scale={[0.9, 0.9, 0.35]} castShadow={!isMobile}>
-          <torusGeometry args={isMobile ? [0.85, 0.08, 4, 10] : [0.85, 0.08, 8, 24]} />
-          <BurgerMaterial 
+        <mesh position={[0.45, 0, -0.35]} rotation={[Math.PI / 2 - 0.1, -0.2, 0.45]} scale={[0.9, 0.9, 0.35]} castShadow>
+          <torusGeometry args={[0.85, 0.08, 8, 24]} />
+          <meshPhysicalMaterial 
             color={layerConfig.onion.color} 
             roughness={0.3} 
             transmission={0.25}
@@ -900,25 +861,25 @@ function StackGroup({ burgerStateRef, activeCustomizer, activeShowcase, activeIn
 
       {/* 5. PICKLES */}
       <group name="pickles">
-        <mesh position={[-0.6, 0, -0.4]} rotation={[0.15, 0.3, -0.1]} scale={[1.1, 1, 1.0]} castShadow={!isMobile}>
-          <cylinderGeometry args={isMobile ? [0.35, 0.35, 0.06, 8] : [0.35, 0.35, 0.06, 16]} />
-          <BurgerMaterial color={layerConfig.pickles.color} roughness={0.45} clearcoat={0.15} />
+        <mesh position={[-0.6, 0, -0.4]} rotation={[0.15, 0.3, -0.1]} scale={[1.1, 1, 1.0]} castShadow>
+          <cylinderGeometry args={[0.35, 0.35, 0.06, 16]} />
+          <meshPhysicalMaterial color={layerConfig.pickles.color} roughness={0.45} clearcoat={0.15} />
         </mesh>
-        <mesh position={[0.5, 0, 0.5]} rotation={[-0.1, -0.25, 0.15]} scale={[1.0, 1, 1.0]} castShadow={!isMobile}>
-          <cylinderGeometry args={isMobile ? [0.35, 0.35, 0.06, 8] : [0.35, 0.35, 0.06, 16]} />
-          <BurgerMaterial color={layerConfig.pickles.color} roughness={0.45} clearcoat={0.15} />
+        <mesh position={[0.5, 0, 0.5]} rotation={[-0.1, -0.25, 0.15]} scale={[1.0, 1, 1.0]} castShadow>
+          <cylinderGeometry args={[0.35, 0.35, 0.06, 16]} />
+          <meshPhysicalMaterial color={layerConfig.pickles.color} roughness={0.45} clearcoat={0.15} />
         </mesh>
-        <mesh position={[0.1, 0, -0.6]} rotation={[0, 0.9, -0.1]} scale={[1.0, 1, 0.9]} castShadow={!isMobile}>
-          <cylinderGeometry args={isMobile ? [0.35, 0.35, 0.06, 8] : [0.35, 0.35, 0.06, 16]} />
-          <BurgerMaterial color={layerConfig.pickles.color} roughness={0.45} clearcoat={0.15} />
+        <mesh position={[0.1, 0, -0.6]} rotation={[0, 0.9, -0.1]} scale={[1.0, 1, 0.9]} castShadow>
+          <cylinderGeometry args={[0.35, 0.35, 0.06, 16]} />
+          <meshPhysicalMaterial color={layerConfig.pickles.color} roughness={0.45} clearcoat={0.15} />
         </mesh>
       </group>
 
       {/* 6. MELTING CHEDDAR CHEESE */}
       <group name="cheese">
-        <mesh rotation={[0, Math.PI / 4, 0]} castShadow={!isMobile} receiveShadow={!isMobile}>
-          <boxGeometry ref={cheeseGeoRef} args={isMobile ? [3.3, 0.03, 3.3, 2, 1, 2] : [3.3, 0.03, 3.3, 8, 1, 8]} />
-          <BurgerMaterial
+        <mesh rotation={[0, Math.PI / 4, 0]} castShadow receiveShadow>
+          <boxGeometry ref={cheeseGeoRef} args={[3.3, 0.03, 3.3, 8, 1, 8]} />
+          <meshPhysicalMaterial
             color={layerConfig.cheese.color}
             roughness={0.32} // slightly oily melted cheese
             transmission={0.15} // translucent edges
@@ -930,9 +891,9 @@ function StackGroup({ burgerStateRef, activeCustomizer, activeShowcase, activeIn
 
       {/* 7. BEEF PATTY */}
       <group name="patty">
-        <mesh castShadow={!isMobile} receiveShadow={!isMobile}>
-          <cylinderGeometry ref={pattyGeoRef} args={isMobile ? [1.9, 1.95, 0.45, 16, 1] : [1.9, 1.95, 0.45, 32, 4]} />
-          <BurgerMaterial
+        <mesh castShadow receiveShadow>
+          <cylinderGeometry ref={pattyGeoRef} args={[1.9, 1.95, 0.45, 32, 4]} />
+          <meshPhysicalMaterial
             color={layerConfig.patty.color}
             roughness={0.82}
             bumpMap={pattyBump.current}
@@ -946,9 +907,9 @@ function StackGroup({ burgerStateRef, activeCustomizer, activeShowcase, activeIn
 
       {/* 8. GLOSSY KETCHUP SAUCE */}
       <group name="sauce">
-        <mesh scale={[1, 0.6, 1]} castShadow={!isMobile}>
-          <cylinderGeometry args={isMobile ? [1.7, 1.8, 0.1, 16] : [1.7, 1.8, 0.1, 32]} />
-          <BurgerMaterial
+        <mesh scale={[1, 0.6, 1]} castShadow>
+          <cylinderGeometry args={[1.7, 1.8, 0.1, 32]} />
+          <meshPhysicalMaterial
             color={layerConfig.sauce.color}
             roughness={0.05} // ultra wet glossy
             clearcoat={0.8}
@@ -959,9 +920,9 @@ function StackGroup({ burgerStateRef, activeCustomizer, activeShowcase, activeIn
 
       {/* 9. BOTTOM BUN */}
       <group name="bottomBun">
-        <mesh castShadow={!isMobile} receiveShadow={!isMobile}>
-          <cylinderGeometry args={isMobile ? [1.85, 1.9, 0.4, 16] : [1.85, 1.9, 0.4, 32]} />
-          <BurgerMaterial
+        <mesh castShadow receiveShadow>
+          <cylinderGeometry args={[1.85, 1.9, 0.4, 32]} />
+          <meshPhysicalMaterial
             color={layerConfig.bottomBun.color}
             roughness={0.55}
             metalness={0.02}
@@ -1018,24 +979,12 @@ export default function Burger3D({
   activeIngredients,
   hoveredIngredient,
 }) {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
   return (
     <div className="w-full h-full relative outline-none select-none">
       <Canvas
-        shadows={!isMobile}
-        dpr={isMobile ? 1 : [1, 1.5]}
+        shadows
         camera={{ position: [0, 0.5, 8.5], fov: 45 }}
-        gl={{ antialias: !isMobile, alpha: true }}
+        gl={{ antialias: true, alpha: true }}
       >
         <color attach="background" args={["#000000"]} />
         <fog attach="fog" args={["#000000", 6, 15]} />
@@ -1050,8 +999,8 @@ export default function Burger3D({
           penumbra={0.9}
           intensity={5.0}
           color="#ff7a00"
-          castShadow={!isMobile}
-          shadow-mapSize={isMobile ? [256, 256] : [2048, 2048]}
+          castShadow
+          shadow-mapSize={[2048, 2048]} // high-res shadows
           shadow-bias={-0.0001}
         />
         <spotLight
@@ -1065,8 +1014,8 @@ export default function Burger3D({
           position={[6, 5, 4]} 
           intensity={2.0} 
           color="#ffffff" 
-          castShadow={!isMobile} 
-          shadow-mapSize={isMobile ? [256, 256] : [1024, 1024]}
+          castShadow 
+          shadow-mapSize={[1024, 1024]}
         />
         <pointLight position={[0, -5, 0]} intensity={4.0} color="#ff4500" />
 
@@ -1079,7 +1028,6 @@ export default function Burger3D({
           activeShowcase={activeShowcase}
           activeIngredients={activeIngredients}
           hoveredIngredient={hoveredIngredient}
-          isMobile={isMobile}
         />
 
         {/* Camera Coordinator linking R3F render frame loops to GSAP timelines */}
