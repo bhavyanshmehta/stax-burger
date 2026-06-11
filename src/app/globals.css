@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+:root {
+  --background: #000000;
+  --foreground: #F5EBDC;
+}
+
+@theme inline {
+  --font-heading: var(--font-outfit);
+  --font-body: var(--font-inter);
+  
+  --color-stax-black: #000000;
+  --color-stax-charcoal: #111111;
+  --color-stax-orange: #FF7A00;
+  --color-stax-accent: #FFB347;
+  --color-stax-cream: #FAF9F6;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: #2b2b2b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FF7A00;
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+  background: rgba(26, 26, 26, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-nav {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Text Mask Animations */
+.mask-text-reveal {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+}
+
+@keyframes scrollLine {
+  0% {
+    transform: translateY(-100%);
+  }
+  50% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.animate-scroll-line {
+  animation: scrollLine 2.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* HUD Connector Line & Badge Animations */
+@keyframes drawLine {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes fadeInBadgeLeft {
+  from {
+    opacity: 0;
+    transform: translate(-100%, -30%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-100%, -50%);
+  }
+}
+@keyframes fadeInBadgeRight {
+  from {
+    opacity: 0;
+    transform: translate(0%, -30%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0%, -50%);
+  }
+}
+.hud-line {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+}
+.hud-badge-left {
+  opacity: 0;
+}
+.hud-badge-right {
+  opacity: 0;
+}
+
+/* Floating animation for menu burger cards */
+@keyframes floatBurger {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+}
+.animate-float-burger {
+  animation: floatBurger 5s ease-in-out infinite;
+}
+
+
