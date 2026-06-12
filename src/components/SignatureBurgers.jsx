@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { Flame, Star, Plus, GlassWater, Leaf, ChevronLeft, ChevronRight } from "lucide-react";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // Custom 3D Tilt Wrapper Component
 function TiltCard({ children, className }) {
@@ -281,6 +282,46 @@ export default function SignatureBurgers({ onCustomize, onAddToCart }) {
   const [vegOnly, setVegOnly] = useState(false);
   const [nonVegOnly, setNonVegOnly] = useState(false);
   const scrollRef = useRef(null);
+
+  // Dynamic products state
+  const [menuProducts, setMenuProducts] = useState(burgers);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const hasKeys = isSupabaseConfigured();
+      if (!hasKeys) return;
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .eq("availability", true)
+          .order("id", { ascending: true });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const mapped = data.map((p) => ({
+            id: p.id,
+            name: p.name,
+            desc: p.description,
+            price: `₹${p.price}`,
+            rating: Number(p.rating) || 4.5,
+            reviews: p.reviews || "0",
+            tag: p.tag,
+            category: p.category,
+            vegType: p.veg_type,
+            isNew: p.is_new,
+            image: p.image,
+          }));
+          setMenuProducts(mapped);
+        }
+      } catch (err) {
+        console.error("Error loading menu products from Supabase:", err);
+      }
+    };
+
+    fetchProducts();
+  }, []);
   
   // Refs and styles for the sliding active indicator highlight
   const categoryRefs = useRef({});
@@ -312,7 +353,7 @@ export default function SignatureBurgers({ onCustomize, onAddToCart }) {
   };
 
   // Filter logic: category + dietary preference
-  let filteredItems = burgers.filter(b => b.category === activeCategory);
+  let filteredItems = menuProducts.filter(b => b.category === activeCategory);
   if (vegOnly) {
     filteredItems = filteredItems.filter(b => b.vegType === "veg");
   }

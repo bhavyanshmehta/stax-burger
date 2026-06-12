@@ -1,9 +1,9 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { Flame, Menu, X, ChevronDown, GlassWater, Sparkles, Tag, ShieldCheck, MapPin, Award, ArrowRight } from "lucide-react";
+import { Flame, Menu, X, ChevronDown, GlassWater, Sparkles, Tag, ShieldCheck, MapPin, Award, ArrowRight, User } from "lucide-react";
 import gsap from "gsap";
 
-export default function Hero({ cartCount = 0, onCartOpen }) {
+export default function Hero({ cartCount = 0, onCartOpen, user, onUserClick }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [prevDropdown, setPrevDropdown] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -526,6 +526,17 @@ export default function Hero({ cartCount = 0, onCartOpen }) {
               )}
             </button>
 
+            {/* Desktop User Account Button */}
+            <button
+              onClick={onUserClick}
+              className="hidden md:flex relative w-10 h-10 rounded-full border border-white/10 items-center justify-center text-white/80 hover:text-[#FF7A00] hover:border-[#FF7A00]/30 bg-black/40 hover:bg-[#FF7A00]/5 cursor-pointer transition-all duration-300"
+            >
+              <User className="w-[18px] h-[18px]" />
+              {user && (
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border border-black shadow" />
+              )}
+            </button>
+
             {/* Mobile Cart Button */}
             <button
               onClick={onCartOpen}
@@ -550,6 +561,17 @@ export default function Hero({ cartCount = 0, onCartOpen }) {
                 <span className="absolute -top-1 -right-1 bg-[#FF7A00] text-black font-heading font-black text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(255,122,0,0.6)]">
                   {cartCount}
                 </span>
+              )}
+            </button>
+
+            {/* Mobile User Account Button */}
+            <button
+              onClick={onUserClick}
+              className="md:hidden relative w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white/80 hover:text-[#FF7A00] hover:border-[#FF7A00]/30 bg-black/40 hover:bg-[#FF7A00]/5 cursor-pointer transition-all duration-300"
+            >
+              <User className="w-[18px] h-[18px]" />
+              {user && (
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border border-black shadow" />
               )}
             </button>
 

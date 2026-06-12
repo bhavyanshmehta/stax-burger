@@ -17,6 +17,9 @@ import Footer from "@/components/Footer";
 import CustomCursor from "@/components/CustomCursor";
 import CartDrawer from "@/components/CartDrawer";
 import CheckoutModal from "@/components/CheckoutModal";
+import AuthModal from "@/components/AuthModal";
+import ProfileModal from "@/components/ProfileModal";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -26,8 +29,14 @@ export default function Home() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
 
-  // Load cart from localStorage on mount
+  // Auth states
+  const [user, setUser] = useState(null);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Load session and cart on mount
   useEffect(() => {
+    // A. Cart Load
     const savedCart = localStorage.getItem("stax_cart");
     if (savedCart) {
       try {
@@ -36,12 +45,51 @@ export default function Home() {
         console.error("Failed to parse saved cart", e);
       }
     }
+
+    // B. Auth Session Load
+    const hasKeys = isSupabaseConfigured();
+    if (hasKeys) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setUser(session?.user || null);
+      });
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user || null);
+      });
+
+      return () => subscription.unsubscribe();
+    } else {
+      // Mock/Simulation session loader
+      const simUser = localStorage.getItem("stax_simulated_user");
+      if (simUser) {
+        setUser(JSON.parse(simUser));
+      }
+    }
   }, []);
 
   // Save cart to localStorage when it changes
   useEffect(() => {
     localStorage.setItem("stax_cart", JSON.stringify(cart));
   }, [cart]);
+
+  const handleUserClick = () => {
+    if (user) {
+      setIsProfileOpen(true);
+    } else {
+      setIsAuthOpen(true);
+    }
+  };
+
+  const handleLogout = async () => {
+    const hasKeys = isSupabaseConfigured();
+    if (hasKeys) {
+      await supabase.auth.signOut();
+    } else {
+      localStorage.removeItem("stax_simulated_user");
+    }
+    setUser(null);
+    addToast("Signed out successfully");
+  };
 
   const addToast = (message) => {
     const id = Date.now();
@@ -430,6 +478,8 @@ export default function Home() {
       <Hero
         cartCount={cart.reduce((acc, curr) => acc + curr.qty, 0)}
         onCartOpen={() => setIsCartOpen(true)}
+        user={user}
+        onUserClick={handleUserClick}
       />
 
       {/* Narrative Flow Overlays (Hero + 4 Main Sections) */}
@@ -679,6 +729,24 @@ export default function Home() {
         onClose={() => setIsCheckoutOpen(false)}
         cartItems={cart}
         onClearCart={clearCart}
+        user={user}
+      />
+
+      {/* Auth & Profile Modals */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onAuthSuccess={(u) => {
+          setUser(u);
+          addToast("Welcome to STAX!");
+        }}
+      />
+
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        user={user}
+        onLogout={handleLogout}
       />
     </main>
   );

@@ -135,9 +135,9 @@ export default function OrderTracking() {
             Track Your Stack
           </h1>
           <p className="text-white/40 text-xs font-medium uppercase tracking-wider mt-1">
-            Order ID: <span className="text-white font-bold">{order._id}</span>
+            Order Code: <span className="text-[#FF7A00] font-black font-heading tracking-wide uppercase">{order.order_number || order._id}</span>
             <span className="mx-2 text-white/20">•</span>
-            Est. Delivery: <span className="text-[#FF7A00] font-black">{order.estimatedTime || "30 mins"}</span>
+            Est. Delivery: <span className="text-white font-bold">{order.estimatedTime || "30 mins"}</span>
           </p>
         </div>
 

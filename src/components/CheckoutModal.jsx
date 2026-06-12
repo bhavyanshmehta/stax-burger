@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle, MapPin, Phone, Mail, User, ClipboardList, Flame } from "lucide-react";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export default function CheckoutModal({
   isOpen,
   onClose,
   cartItems,
   onClearCart,
+  user,
 }) {
   const [formData, setFormData] = useState({
     name: "",
@@ -23,6 +25,48 @@ export default function CheckoutModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("COD");
+
+  // Saved Addresses
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      if (user) {
+        setFormData((prev) => ({
+          ...prev,
+          name: user.user_metadata?.name || prev.name,
+          email: user.email || prev.email,
+          phone: user.user_metadata?.phone || prev.phone,
+        }));
+        fetchAddresses();
+      } else {
+        setFormData({ name: "", email: "", phone: "", address: "" });
+        setSavedAddresses([]);
+        setSelectedAddressId("");
+      }
+    }
+  }, [user, isOpen]);
+
+  const fetchAddresses = async () => {
+    if (!user) return;
+    const hasKeys = isSupabaseConfigured();
+    if (hasKeys) {
+      try {
+        const { data, error } = await supabase
+          .from("addresses")
+          .select("*")
+          .eq("profile_id", user.id)
+          .order("id", { ascending: false });
+        if (data) setSavedAddresses(data);
+      } catch (err) {
+        console.error("Error fetching checkout addresses:", err);
+      }
+    } else {
+      const simAddr = JSON.parse(localStorage.getItem(`stax_sim_addr_${user.id}`)) || [];
+      setSavedAddresses(simAddr);
+    }
+  };
 
   // Calculations
   const subtotal = cartItems.reduce(
@@ -131,6 +175,7 @@ export default function CheckoutModal({
                     tax: tax,
                     total: total,
                     paymentMethod: "Online",
+                    profileId: user ? user.id : null,
                     paymentDetails: {
                       paymentId: response.razorpay_payment_id,
                       orderId: response.razorpay_order_id,
@@ -141,7 +186,7 @@ export default function CheckoutModal({
                 });
                 const orderData = await orderRes.json();
                 if (orderData.success) {
-                  setOrderId(orderData.order._id);
+                  setOrderId(orderData.order._id || orderData.order.id);
                   setCreatedOrder(orderData.order);
                   setIsSubmitted(true);
                 } else {
@@ -193,11 +238,12 @@ export default function CheckoutModal({
           tax: tax,
           total: total,
           paymentMethod: paymentMethod === "Online" ? "Online (Simulated)" : "COD",
+          profileId: user ? user.id : null,
         }),
       });
       const data = await response.json();
       if (data.success) {
-        setOrderId(data.order._id);
+        setOrderId(data.order._id || data.order.id);
         setCreatedOrder(data.order);
         setIsSubmitted(true);
       } else {
@@ -338,6 +384,40 @@ export default function CheckoutModal({
                     <label className="text-xs font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-[#FF7A00]" /> Delivery Address
                     </label>
+
+                    {/* Saved Addresses Dropdown if logged in */}
+                    {savedAddresses.length > 0 && (
+                      <div className="flex flex-col gap-1.5 mb-1.5 text-left">
+                        <select
+                          value={selectedAddressId}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSelectedAddressId(val);
+                            if (val) {
+                              const addr = savedAddresses.find((a) => a.id.toString() === val.toString());
+                              if (addr) {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  address: `${addr.full_address}, ${addr.city}, ${addr.state} - ${addr.postal_code}`,
+                                }));
+                                if (errors.address) {
+                                  setErrors((prev) => ({ ...prev, address: "" }));
+                                }
+                              }
+                            }
+                          }}
+                          className="w-full bg-[#121212] border border-white/10 focus:border-[#FF7A00] rounded-xl px-3 py-2.5 text-xs text-white outline-none cursor-pointer"
+                        >
+                          <option value="">-- Choose from Saved Addresses --</option>
+                          {savedAddresses.map((addr) => (
+                            <option key={addr.id} value={addr.id}>
+                              {addr.full_address.substring(0, 35)}... ({addr.postal_code})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     <textarea
                       name="address"
                       placeholder="Enter your full street address and landmarks..."
