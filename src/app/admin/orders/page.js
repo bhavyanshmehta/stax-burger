@@ -87,7 +87,17 @@ export default function AdminOrdersPage() {
 
                   <div className="flex items-center justify-between md:justify-end gap-6">
                     <div className="flex flex-col text-left md:text-right">
-                      <span className="text-[9px] text-white/30 uppercase tracking-widest font-semibold">{itemsCount} Items • {ord.paymentMethod}</span>
+                      <span className="text-[9px] text-white/30 uppercase tracking-widest font-semibold">
+                        {itemsCount} Items • {ord.paymentMethod} •{' '}
+                        <span className={`font-bold ${
+                          ord.paymentStatus === 'Paid' ? 'text-green-400' :
+                          ord.paymentStatus === 'COD' ? 'text-blue-400' :
+                          ord.paymentStatus === 'Refunded' ? 'text-purple-400' :
+                          ord.paymentStatus === 'Failed' ? 'text-red-400' : 'text-yellow-400'
+                        }`}>
+                          {ord.paymentStatus || 'Pending'}
+                        </span>
+                      </span>
                       <span className="text-sm font-heading font-black text-[#FF7A00]">₹{ord.total}</span>
                     </div>
                     
@@ -125,6 +135,26 @@ export default function AdminOrdersPage() {
                         <div>
                           <span className="text-white/30 uppercase tracking-widest text-[8.5px] font-bold block mb-0.5">Delivery Coordinates</span>
                           <span className="text-white/80 leading-relaxed">{ord.address}</span>
+                        </div>
+                        <div>
+                          <span className="text-white/30 uppercase tracking-widest text-[8.5px] font-bold block mb-0.5">Payment Method & Status</span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="font-bold text-white text-xs">{ord.paymentMethod}</span>
+                            <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              ord.paymentStatus === 'Paid' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                              ord.paymentStatus === 'COD' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                              ord.paymentStatus === 'Refunded' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                              ord.paymentStatus === 'Failed' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                              'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                            }`}>
+                              {ord.paymentStatus || 'Pending'}
+                            </span>
+                          </div>
+                          {ord.transactionId && (
+                            <span className="font-mono text-white/40 text-[10px] block mt-1">
+                              Tx ID: {ord.transactionId}
+                            </span>
+                          )}
                         </div>
 
                         {/* Delivery time manager */}

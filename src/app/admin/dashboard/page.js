@@ -16,14 +16,16 @@ export default function AdminDashboardPage() {
   }
 
   // Analytics Metrics
-  const totalRevenue = orders.reduce((sum, ord) => sum + (ord.total || 0), 0);
+  // Revenue stats are strictly based on successful transactions (Paid or COD)
+  const paidOrders = orders.filter(o => o.paymentStatus === "Paid" || o.paymentStatus === "COD" || o.paymentStatus === "Paid (Simulated)");
+  const totalRevenue = paidOrders.reduce((sum, ord) => sum + (ord.total || 0), 0);
   const totalOrders = orders.length;
   const pendingOrders = orders.filter(o => ["Received", "Preparing", "Cooking", "Out for Delivery"].includes(o.status)).length;
   const completedOrders = orders.filter(o => o.status === "Delivered").length;
-  const averageOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+  const averageOrderValue = paidOrders.length > 0 ? Math.round(totalRevenue / paidOrders.length) : 0;
 
   // Breakdown Calculations
-  const paymentBreakdown = orders.reduce((acc, ord) => {
+  const paymentBreakdown = paidOrders.reduce((acc, ord) => {
     const method = ord.paymentMethod || "COD";
     acc[method] = (acc[method] || 0) + (ord.total || 0);
     return acc;
@@ -194,12 +196,31 @@ export default function AdminDashboardPage() {
             <div key={ord._id || i} className="flex justify-between items-center py-3.5 border-b border-white/5 last:border-0 text-xs">
               <div className="flex flex-col text-left gap-0.5">
                 <span className="font-bold text-white/80">{ord.name} placed order {ord.order_number || ord._id}</span>
-                <span className="text-[10px] text-white/30 font-semibold uppercase">
-                  {new Date(ord.created_at || ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {new Date(ord.created_at || ord.createdAt).toLocaleDateString()}
-                </span>
+                <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[10px] text-white/30 font-semibold uppercase">
+                  <span>
+                    {new Date(ord.created_at || ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {new Date(ord.created_at || ord.createdAt).toLocaleDateString()}
+                  </span>
+                  <span>•</span>
+                  <span className="text-[#FF7A00]">{ord.paymentMethod}</span>
+                  {ord.transactionId && (
+                    <>
+                      <span>•</span>
+                      <span className="font-mono text-white/40 normal-case">TxID: {ord.transactionId}</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="text-right">
+              <div className="flex flex-col items-end gap-1">
                 <span className="font-heading font-black text-[#FF7A00]">₹{ord.total}</span>
+                <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                  ord.paymentStatus === 'Paid' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                  ord.paymentStatus === 'COD' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                  ord.paymentStatus === 'Refunded' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                  ord.paymentStatus === 'Failed' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                  'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                }`}>
+                  {ord.paymentStatus || 'Pending'}
+                </span>
               </div>
             </div>
           ))}

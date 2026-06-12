@@ -27,6 +27,8 @@ export async function GET(req, { params }) {
         _id: order.id,
         estimatedTime: order.estimated_time,
         paymentMethod: order.payment_method,
+        paymentStatus: order.payment_status,
+        transactionId: order.transaction_id,
         items: (order.items || []).map(itm => ({
           name: itm.product_name,
           price: `₹${itm.price}`,
@@ -100,6 +102,8 @@ export async function PATCH(req, { params }) {
         _id: updatedOrder.id,
         estimatedTime: updatedOrder.estimated_time,
         paymentMethod: updatedOrder.payment_method,
+        paymentStatus: updatedOrder.payment_status,
+        transactionId: updatedOrder.transaction_id,
         items: (updatedOrder.items || []).map(itm => ({
           name: itm.product_name,
           price: `₹${itm.price}`,

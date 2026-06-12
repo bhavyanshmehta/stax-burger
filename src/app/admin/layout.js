@@ -163,6 +163,8 @@ export default function AdminLayout({ children }) {
           _id: ord.id,
           estimatedTime: ord.estimated_time,
           paymentMethod: ord.payment_method,
+          paymentStatus: ord.payment_status,
+          transactionId: ord.transaction_id,
           items: (ord.items || []).map(itm => ({
             name: itm.product_name,
             price: `₹${itm.price}`,

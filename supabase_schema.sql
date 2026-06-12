@@ -68,9 +68,22 @@ CREATE TABLE IF NOT EXISTS public.orders (
     total INTEGER NOT NULL,
     status TEXT DEFAULT 'Received', -- Received, Preparing, Cooking, Out for Delivery, Delivered
     estimated_time TEXT DEFAULT '30 mins',
+    payment_status TEXT DEFAULT 'Pending' CHECK (payment_status IN ('Paid', 'Failed', 'Refunded', 'Pending', 'COD')),
+    transaction_id TEXT,
     payment_details JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Alter orders table to add payment_status and transaction_id if they don't exist (compatibility block)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='payment_status') THEN
+        ALTER TABLE public.orders ADD COLUMN payment_status TEXT DEFAULT 'Pending' CHECK (payment_status IN ('Paid', 'Failed', 'Refunded', 'Pending', 'COD'));
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='transaction_id') THEN
+        ALTER TABLE public.orders ADD COLUMN transaction_id TEXT;
+    END IF;
+END $$;
 
 -- 6. ORDER ITEMS TABLE
 CREATE TABLE IF NOT EXISTS public.order_items (

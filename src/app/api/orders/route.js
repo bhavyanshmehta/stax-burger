@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { connectToDatabase } from "@/lib/db";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import * as fallbackDb from "@/lib/db-fallback";
@@ -23,6 +24,46 @@ export async function POST(req) {
 
     const hasKeys = isSupabaseConfigured();
     let calculatedTime = "30 mins";
+
+    // 1. Signature Verification for Online Payments
+    let paymentStatus = "Pending";
+    let transactionId = null;
+
+    if (paymentMethod === "Online" || paymentMethod === "Online (Simulated)") {
+      const isSim = body.isSimulated || !hasKeys;
+      if (hasKeys && !isSim) {
+        // Enforce strict signature verification
+        const keySecret = process.env.RAZORPAY_KEY_SECRET;
+        if (!keySecret) {
+          return NextResponse.json({ success: false, error: "Server error: Razorpay Secret is not configured." }, { status: 500 });
+        }
+
+        const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = paymentDetails || {};
+
+        if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+          return NextResponse.json({ success: false, error: "Missing Razorpay payment validation parameters." }, { status: 400 });
+        }
+
+        const expectedSignature = crypto
+          .createHmac("sha256", keySecret)
+          .update(razorpay_order_id + "|" + razorpay_payment_id)
+          .digest("hex");
+
+        if (expectedSignature !== razorpay_signature) {
+          return NextResponse.json({ success: false, error: "Payment verification failed. Security signature mismatch." }, { status: 400 });
+        }
+
+        paymentStatus = "Paid";
+        transactionId = razorpay_payment_id;
+      } else {
+        // Simulated checkout success
+        paymentStatus = "Paid";
+        transactionId = (paymentDetails && (paymentDetails.paymentId || paymentDetails.razorpay_payment_id)) || "pay_sim_" + Math.random().toString(36).substring(2, 11);
+      }
+    } else if (paymentMethod === "COD") {
+      paymentStatus = "COD";
+      transactionId = null;
+    }
 
     if (hasKeys) {
       // 1. Calculate dynamic delivery time based on active queue load
@@ -59,6 +100,8 @@ export async function POST(req) {
           total,
           status: "Received",
           estimated_time: orderTime,
+          payment_status: paymentStatus,
+          transaction_id: transactionId,
           payment_details: paymentDetails || null
         })
         .select()
@@ -84,8 +127,11 @@ export async function POST(req) {
       // Format order payload for notifications compat
       const formattedOrder = {
         ...order,
+        _id: order.id,
         items: items,
-        estimatedTime: orderTime
+        estimatedTime: orderTime,
+        paymentStatus,
+        transactionId
       };
 
       // Dispatch notifications
@@ -113,6 +159,8 @@ export async function POST(req) {
       }
 
       body.estimatedTime = calculatedTime;
+      body.paymentStatus = paymentStatus;
+      body.transactionId = transactionId;
       const order = await fallbackDb.createOrder(body);
 
       sendOrderUpdateNotification(order, null).catch(err => {
@@ -148,6 +196,8 @@ export async function GET() {
         _id: ord.id, // For tracking routing compatibility
         estimatedTime: ord.estimated_time,
         paymentMethod: ord.payment_method,
+        paymentStatus: ord.payment_status,
+        transactionId: ord.transaction_id,
         items: (ord.items || []).map(itm => ({
           name: itm.product_name,
           price: `₹${itm.price}`,

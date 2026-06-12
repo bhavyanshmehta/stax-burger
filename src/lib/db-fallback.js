@@ -71,6 +71,8 @@ export async function createOrder(orderData) {
     status: orderData.status || "Received",
     estimatedTime: orderData.estimatedTime || "30 mins",
     paymentMethod: orderData.paymentMethod || "COD",
+    paymentStatus: orderData.paymentStatus || (orderData.paymentMethod === "COD" ? "COD" : "Pending"),
+    transactionId: orderData.transactionId || null,
     createdAt: new Date().toISOString()
   };
 
