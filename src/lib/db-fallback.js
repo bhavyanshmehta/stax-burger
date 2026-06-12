@@ -1,21 +1,27 @@
 import fs from "fs/promises";
 import path from "path";
 
-// Save file inside the public/data directory or a writeable place in next project
+// In-memory array for Vercel read-only serverless environment
+let inMemoryOrders = [];
+
 const dataDir = path.join(process.cwd(), "src", "data");
 const filePath = path.join(dataDir, "orders.json");
 
 async function ensureFileExists() {
+  if (process.env.VERCEL) return; // Skip filesystem in Vercel
   try {
     await fs.mkdir(dataDir, { recursive: true });
     await fs.access(filePath);
   } catch (error) {
-    // If directory/file doesn't exist, create it with empty array
     await fs.writeFile(filePath, JSON.stringify([], null, 2), "utf8");
   }
 }
 
 export async function getOrders() {
+  if (process.env.VERCEL) {
+    return inMemoryOrders;
+  }
+
   await ensureFileExists();
   try {
     const data = await fs.readFile(filePath, "utf8");
@@ -27,6 +33,11 @@ export async function getOrders() {
 }
 
 export async function saveOrders(orders) {
+  if (process.env.VERCEL) {
+    inMemoryOrders = orders;
+    return true;
+  }
+
   await ensureFileExists();
   try {
     await fs.writeFile(filePath, JSON.stringify(orders, null, 2), "utf8");
@@ -40,7 +51,6 @@ export async function saveOrders(orders) {
 export async function createOrder(orderData) {
   const orders = await getOrders();
   
-  // Format items correctly
   const formattedItems = orderData.items.map(item => ({
     name: item.name,
     price: item.price,
@@ -49,7 +59,7 @@ export async function createOrder(orderData) {
   }));
 
   const newOrder = {
-    _id: "stx_" + Math.random().toString(36).substr(2, 9), // custom safe ID
+    _id: "stx_" + Math.random().toString(36).substr(2, 9),
     name: orderData.name,
     email: orderData.email,
     phone: orderData.phone,
@@ -62,7 +72,7 @@ export async function createOrder(orderData) {
     createdAt: new Date().toISOString()
   };
 
-  orders.unshift(newOrder); // Add to beginning (latest first)
+  orders.unshift(newOrder);
   await saveOrders(orders);
   return newOrder;
 }
