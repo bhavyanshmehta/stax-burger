@@ -31,7 +31,6 @@ export default function CheckoutModal({
   const [paymentError, setPaymentError] = useState("");
   const [razorpayOrderId, setRazorpayOrderId] = useState("");
   const [razorpayKeyId, setRazorpayKeyId] = useState("");
-  const [isSimulatedModalOpen, setIsSimulatedModalOpen] = useState(false);
 
   // Saved Addresses
   const [savedAddresses, setSavedAddresses] = useState([]);
@@ -57,7 +56,6 @@ export default function CheckoutModal({
       setPaymentError("");
       setRazorpayOrderId("");
       setRazorpayKeyId("");
-      setIsSimulatedModalOpen(false);
     }
   }, [user, isOpen]);
 
@@ -238,8 +236,7 @@ export default function CheckoutModal({
         });
         const payData = await payRes.json();
 
-        if (payRes.status === 200 && payData.success && !payData.isSimulated) {
-          // Razorpay credentials exist, trigger checkout popup
+        if (payRes.status === 200 && payData.success) {
           const scriptLoaded = await loadRazorpayScript();
           if (!scriptLoaded) {
             setApiError("Failed to initialize payment gateway SDK. Please check your connection.");
@@ -251,8 +248,8 @@ export default function CheckoutModal({
           setRazorpayOrderId(payData.order.id);
           openRazorpayWidget(payData.keyId, payData.order);
         } else {
-          // Progressing in simulation mode
-          setIsSimulatedModalOpen(true);
+          setApiError(payData.error || "Failed to initiate online payment session. Please try again or use COD.");
+          setIsSubmitting(false);
         }
         return;
       }
@@ -301,79 +298,13 @@ export default function CheckoutModal({
     }
   };
 
-  const handleSimulatedPaymentResult = async (result) => {
-    setIsSimulatedModalOpen(false);
-    setPaymentStatus("processing");
-    setPaymentError("");
-
-    if (result === "success") {
-      try {
-        const response = await fetch("/api/orders", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            address: formData.address,
-            items: cartItems,
-            subtotal: subtotal,
-            tax: tax,
-            total: total,
-            paymentMethod: "Online (Simulated)",
-            profileId: user ? user.id : null,
-            isSimulated: true,
-            paymentDetails: {
-              paymentId: "pay_sim_" + Math.random().toString(36).substring(2, 11),
-              status: "Paid",
-            }
-          }),
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-          if (data.isFallback) {
-            const simOrders = JSON.parse(localStorage.getItem("stax_cart_orders") || "[]");
-            simOrders.unshift(data.order);
-            localStorage.setItem("stax_cart_orders", JSON.stringify(simOrders));
-          }
-          setOrderId(data.order._id || data.order.id);
-          setCreatedOrder(data.order);
-          setPaymentStatus("success");
-          setIsSubmitted(true);
-        } else {
-          setPaymentStatus("failed");
-          setPaymentError(data.error || "Failed to create simulated order.");
-        }
-      } catch (err) {
-        console.error("Simulated order error:", err);
-        setPaymentStatus("failed");
-        setPaymentError("Network error verifying transaction.");
-      }
-    } else if (result === "failed") {
-      setTimeout(() => {
-        setPaymentStatus("failed");
-        setPaymentError("Your card was declined by the issuer bank (Simulated Error).");
-        setIsSubmitting(false);
-      }, 800);
-    } else if (result === "cancelled") {
-      setTimeout(() => {
-        setPaymentStatus("cancelled");
-        setPaymentError("Payment session was dismissed by the client (Simulated Cancel).");
-        setIsSubmitting(false);
-      }, 800);
-    }
-  };
-
   const handleRetryPayment = async () => {
     setPaymentStatus(null);
     setPaymentError("");
     setIsSubmitting(true);
     
     if (paymentMethod === "Online") {
-      const activeKeyId = razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      const activeKeyId = razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
       if (activeKeyId && razorpayOrderId) {
         // Retry existing real Razorpay transaction
         const scriptLoaded = await loadRazorpayScript();
@@ -387,11 +318,9 @@ export default function CheckoutModal({
           return;
         }
       }
-      
-      // Fallback: Re-launch simulation picker
-      setIsSimulatedModalOpen(true);
-    } else if (paymentMethod === "Online (Simulated)") {
-      setIsSimulatedModalOpen(true);
+      setPaymentStatus("failed");
+      setPaymentError("Unable to retry payment. Missing active session key or order ID.");
+      setIsSubmitting(false);
     }
   };
 
@@ -763,59 +692,6 @@ export default function CheckoutModal({
         )}
       </AnimatePresence>
 
-      {/* Simulated Payment Results Dialog */}
-      <AnimatePresence>
-        {isSimulatedModalOpen && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsSimulatedModalOpen(false)}
-              className="fixed inset-0 bg-black/90 backdrop-blur-[15px]"
-            />
-
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-sm bg-[#0a0a0a] border border-[#FF7A00]/20 rounded-[2rem] p-6 text-center z-10 text-white"
-            >
-              <div className="w-12 h-12 rounded-full bg-[#FF7A00]/10 border border-[#FF7A00]/25 flex items-center justify-center text-[#FF7A00] mx-auto mb-4">
-                <Flame className="w-6 h-6 fill-current animate-pulse animate-bounce" />
-              </div>
-
-              <h4 className="font-heading font-black text-lg uppercase tracking-wider mb-2">
-                STAX Sandbox Payment
-              </h4>
-              <p className="text-white/40 text-xs leading-relaxed max-w-xs mx-auto mb-6">
-                Supabase/Razorpay keys are absent. Select a simulated transaction response to test the Checkout pipeline.
-              </p>
-
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => handleSimulatedPaymentResult("success")}
-                  className="w-full py-3 bg-green-500/10 hover:bg-green-500 border border-green-500/35 hover:border-green-500 text-green-400 hover:text-black font-heading font-black text-[10px] uppercase tracking-widest rounded-xl transition-all duration-300 cursor-pointer"
-                >
-                  Simulate Success (Paid)
-                </button>
-                <button
-                  onClick={() => handleSimulatedPaymentResult("failed")}
-                  className="w-full py-3 bg-red-500/10 hover:bg-red-500 border border-red-500/35 hover:border-red-500 text-red-400 hover:text-white font-heading font-black text-[10px] uppercase tracking-widest rounded-xl transition-all duration-300 cursor-pointer"
-                >
-                  Simulate Failure (Error)
-                </button>
-                <button
-                  onClick={() => handleSimulatedPaymentResult("cancelled")}
-                  className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white font-heading font-black text-[10px] uppercase tracking-widest rounded-xl transition-all duration-300 cursor-pointer"
-                >
-                  Simulate Cancellation
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </>
   );
 }

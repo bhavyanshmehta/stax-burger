@@ -31,31 +31,27 @@ export async function POST(req) {
 
     if (paymentMethod === "Online") {
       const keySecret = process.env.RAZORPAY_KEY_SECRET;
+      if (!keySecret) {
+        return NextResponse.json({ success: false, error: "Server error: Razorpay credentials are not configured on the server." }, { status: 500 });
+      }
+
       const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = paymentDetails || {};
 
-      if (keySecret && razorpay_signature) {
-        if (!razorpay_payment_id || !razorpay_order_id) {
-          return NextResponse.json({ success: false, error: "Missing Razorpay payment parameters." }, { status: 400 });
-        }
-
-        const expectedSignature = crypto
-          .createHmac("sha256", keySecret)
-          .update(razorpay_order_id + "|" + razorpay_payment_id)
-          .digest("hex");
-
-        if (expectedSignature !== razorpay_signature) {
-          return NextResponse.json({ success: false, error: "Payment verification failed. Security signature mismatch." }, { status: 400 });
-        }
-
-        paymentStatus = "Paid";
-        transactionId = razorpay_payment_id;
-      } else {
-        paymentStatus = "Paid";
-        transactionId = (paymentDetails && (paymentDetails.paymentId || paymentDetails.razorpay_payment_id)) || "pay_sim_" + Math.random().toString(36).substring(2, 11);
+      if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+        return NextResponse.json({ success: false, error: "Missing Razorpay payment validation parameters." }, { status: 400 });
       }
-    } else if (paymentMethod === "Online (Simulated)") {
+
+      const expectedSignature = crypto
+        .createHmac("sha256", keySecret)
+        .update(razorpay_order_id + "|" + razorpay_payment_id)
+        .digest("hex");
+
+      if (expectedSignature !== razorpay_signature) {
+        return NextResponse.json({ success: false, error: "Payment verification failed. Security signature mismatch." }, { status: 400 });
+      }
+
       paymentStatus = "Paid";
-      transactionId = (paymentDetails && (paymentDetails.paymentId || paymentDetails.razorpay_payment_id)) || "pay_sim_" + Math.random().toString(36).substring(2, 11);
+      transactionId = razorpay_payment_id;
     } else if (paymentMethod === "COD") {
       paymentStatus = "COD";
       transactionId = null;

@@ -4,16 +4,15 @@ export async function POST(req) {
   try {
     const { amount } = await req.json();
 
-    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+    const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
-    // Check if credentials are present. If not, return warning so client enters simulation mode
+    // Check if credentials are present. If not, return error
     if (!keyId || !keySecret) {
       return NextResponse.json({
         success: false,
-        isSimulated: true,
-        message: "Razorpay keys are not configured. Running in simulation mode."
-      }, { status: 200 });
+        error: "Razorpay payment gateway credentials are not configured on the server."
+      }, { status: 400 });
     }
 
     // Razorpay amount is in paise (e.g. ₹100 = 10000 paise)
