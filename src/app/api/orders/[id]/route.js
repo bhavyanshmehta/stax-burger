@@ -8,8 +8,9 @@ export async function GET(req, { params }) {
   try {
     const { id } = await params;
     const hasKeys = isSupabaseConfigured();
+    const isSimulatedId = id && id.startsWith("stx_");
 
-    if (hasKeys) {
+    if (hasKeys && !isSimulatedId) {
       const { data: order, error } = await supabase
         .from("orders")
         .select("*, items:order_items(*)")
@@ -68,10 +69,11 @@ export async function PATCH(req, { params }) {
     }
 
     const hasKeys = isSupabaseConfigured();
+    const isSimulatedId = id && id.startsWith("stx_");
     let previousStatus = null;
     let order = null;
 
-    if (hasKeys) {
+    if (hasKeys && !isSimulatedId) {
       // Fetch current status before update to check if notifications are needed
       const { data: oldOrder } = await supabase
         .from("orders")

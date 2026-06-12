@@ -189,9 +189,9 @@ CREATE POLICY "Allow users to manage their own addresses"
 ON public.addresses FOR ALL USING (auth.uid() = profile_id);
 
 -- Orders Policies
-CREATE POLICY "Allow users to read their own orders" 
+CREATE POLICY "Allow read access to orders" 
 ON public.orders FOR SELECT 
-USING (auth.uid() = profile_id OR email = auth.jwt() ->> 'email');
+USING (true);
 
 CREATE POLICY "Allow public order creation" 
 ON public.orders FOR INSERT WITH CHECK (true);
@@ -207,15 +207,9 @@ USING (
 );
 
 -- Order Items Policies
-CREATE POLICY "Allow users to read their own order items" 
+CREATE POLICY "Allow read access to order items" 
 ON public.order_items FOR SELECT 
-USING (
-    EXISTS (
-        SELECT 1 FROM public.orders 
-        WHERE public.orders.id = public.order_items.order_id 
-        AND (public.orders.profile_id = auth.uid() OR public.orders.email = auth.jwt() ->> 'email')
-    )
-);
+USING (true);
 
 CREATE POLICY "Allow public order item creation" 
 ON public.order_items FOR INSERT WITH CHECK (true);
