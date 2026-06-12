@@ -60,6 +60,7 @@ export async function createOrder(orderData) {
 
   const newOrder = {
     _id: "stx_" + Math.random().toString(36).substr(2, 9),
+    profileId: orderData.profileId || null,
     name: orderData.name,
     email: orderData.email,
     phone: orderData.phone,

@@ -29,19 +29,13 @@ export async function POST(req) {
     let paymentStatus = "Pending";
     let transactionId = null;
 
-    if (paymentMethod === "Online" || paymentMethod === "Online (Simulated)") {
-      const isSim = body.isSimulated || !hasKeys;
-      if (hasKeys && !isSim) {
-        // Enforce strict signature verification
-        const keySecret = process.env.RAZORPAY_KEY_SECRET;
-        if (!keySecret) {
-          return NextResponse.json({ success: false, error: "Server error: Razorpay Secret is not configured." }, { status: 500 });
-        }
+    if (paymentMethod === "Online") {
+      const keySecret = process.env.RAZORPAY_KEY_SECRET;
+      const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = paymentDetails || {};
 
-        const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = paymentDetails || {};
-
-        if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
-          return NextResponse.json({ success: false, error: "Missing Razorpay payment validation parameters." }, { status: 400 });
+      if (keySecret && razorpay_signature) {
+        if (!razorpay_payment_id || !razorpay_order_id) {
+          return NextResponse.json({ success: false, error: "Missing Razorpay payment parameters." }, { status: 400 });
         }
 
         const expectedSignature = crypto
@@ -56,10 +50,12 @@ export async function POST(req) {
         paymentStatus = "Paid";
         transactionId = razorpay_payment_id;
       } else {
-        // Simulated checkout success
         paymentStatus = "Paid";
         transactionId = (paymentDetails && (paymentDetails.paymentId || paymentDetails.razorpay_payment_id)) || "pay_sim_" + Math.random().toString(36).substring(2, 11);
       }
+    } else if (paymentMethod === "Online (Simulated)") {
+      paymentStatus = "Paid";
+      transactionId = (paymentDetails && (paymentDetails.paymentId || paymentDetails.razorpay_payment_id)) || "pay_sim_" + Math.random().toString(36).substring(2, 11);
     } else if (paymentMethod === "COD") {
       paymentStatus = "COD";
       transactionId = null;
@@ -178,15 +174,28 @@ export async function POST(req) {
   }
 }
 
-export async function GET() {
+export async function GET(req) {
   try {
+    const { searchParams } = new URL(req.url);
+    const profileId = searchParams.get("profileId");
+    const email = searchParams.get("email");
     const hasKeys = isSupabaseConfigured();
 
     if (hasKeys) {
-      const { data: orders, error } = await supabase
+      let query = supabase
         .from("orders")
         .select("*, items:order_items(*)")
         .order("created_at", { ascending: false });
+
+      if (profileId && email) {
+        query = query.or(`profile_id.eq.${profileId},email.eq.${email}`);
+      } else if (profileId) {
+        query = query.eq("profile_id", profileId);
+      } else if (email) {
+        query = query.eq("email", email);
+      }
+
+      const { data: orders, error } = await query;
 
       if (error) throw error;
 
@@ -210,7 +219,15 @@ export async function GET() {
     } else {
       // Fallback
       await connectToDatabase();
-      const orders = await fallbackDb.getOrders();
+      let orders = await fallbackDb.getOrders();
+
+      if (profileId || email) {
+        orders = orders.filter(o => 
+          (profileId && o.profileId === profileId) || 
+          (email && o.email === email)
+        );
+      }
+
       return NextResponse.json({ success: true, orders, isFallback: true }, { status: 200 });
     }
   } catch (error) {

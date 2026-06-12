@@ -30,6 +30,7 @@ export default function CheckoutModal({
   const [paymentStatus, setPaymentStatus] = useState(null); // null, 'processing', 'success', 'failed', 'cancelled'
   const [paymentError, setPaymentError] = useState("");
   const [razorpayOrderId, setRazorpayOrderId] = useState("");
+  const [razorpayKeyId, setRazorpayKeyId] = useState("");
   const [isSimulatedModalOpen, setIsSimulatedModalOpen] = useState(false);
 
   // Saved Addresses
@@ -55,6 +56,7 @@ export default function CheckoutModal({
       setPaymentStatus(null);
       setPaymentError("");
       setRazorpayOrderId("");
+      setRazorpayKeyId("");
       setIsSimulatedModalOpen(false);
     }
   }, [user, isOpen]);
@@ -245,6 +247,7 @@ export default function CheckoutModal({
             return;
           }
 
+          setRazorpayKeyId(payData.keyId);
           setRazorpayOrderId(payData.order.id);
           openRazorpayWidget(payData.keyId, payData.order);
         } else {
@@ -369,24 +372,25 @@ export default function CheckoutModal({
     setPaymentError("");
     setIsSubmitting(true);
     
-    if (paymentMethod === "Online" || paymentMethod === "Online (Simulated)") {
-      const hasKeys = isSupabaseConfigured();
-      if (hasKeys && razorpayOrderId) {
+    if (paymentMethod === "Online") {
+      const activeKeyId = razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      if (activeKeyId && razorpayOrderId) {
         // Retry existing real Razorpay transaction
         const scriptLoaded = await loadRazorpayScript();
         if (scriptLoaded) {
-          const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
           const rzpOrder = {
             id: razorpayOrderId,
             amount: total * 100,
             currency: "INR"
           };
-          openRazorpayWidget(keyId, rzpOrder);
+          openRazorpayWidget(activeKeyId, rzpOrder);
           return;
         }
       }
       
       // Fallback: Re-launch simulation picker
+      setIsSimulatedModalOpen(true);
+    } else if (paymentMethod === "Online (Simulated)") {
       setIsSimulatedModalOpen(true);
     }
   };

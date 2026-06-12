@@ -69,7 +69,7 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout }) {
         const { data: orderList, error: oError } = await supabase
           .from("orders")
           .select("*, order_items(*)")
-          .eq("profile_id", user.id)
+          .or(`profile_id.eq.${user.id},email.eq.${user.email}`)
           .order("created_at", { ascending: false });
 
         if (orderList) setOrders(orderList);
@@ -82,18 +82,30 @@ export default function ProfileModal({ isOpen, onClose, user, onLogout }) {
     } else {
       // Offline Simulation Loading
       setLoading(true);
-      setTimeout(() => {
+      try {
         // Load simulated addresses
         const simAddr = JSON.parse(localStorage.getItem(`stax_sim_addr_${user.id}`)) || [];
         setAddresses(simAddr);
 
-        // Load simulated orders from fallback JSON / localStorage
+        // Load simulated orders from fallback JSON API
+        const res = await fetch(`/api/orders?profileId=${user.id}&email=${user.email}`);
+        const data = await res.json();
+        if (data.success && data.orders) {
+          setOrders(data.orders);
+        } else {
+          // Fallback to localStorage if API fails or is empty
+          const simOrders = JSON.parse(localStorage.getItem("stax_cart_orders")) || [];
+          const userOrders = simOrders.filter(o => o.profileId === user.id || o.email === user.email);
+          setOrders(userOrders);
+        }
+      } catch (err) {
+        console.error("Error fetching simulated orders:", err);
         const simOrders = JSON.parse(localStorage.getItem("stax_cart_orders")) || [];
-        // Filter orders by email
-        const userOrders = simOrders.filter(o => o.email === user.email);
+        const userOrders = simOrders.filter(o => o.profileId === user.id || o.email === user.email);
         setOrders(userOrders);
+      } finally {
         setLoading(false);
-      }, 500);
+      }
     }
   };
 
