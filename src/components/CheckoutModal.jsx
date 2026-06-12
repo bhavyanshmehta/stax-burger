@@ -19,6 +19,8 @@ export default function CheckoutModal({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState("");
 
   // Calculations
   const subtotal = cartItems.reduce(
@@ -55,22 +57,56 @@ export default function CheckoutModal({
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validate()) {
-      // Simulate order processing
-      const randomId = "STX-" + Math.floor(100000 + Math.random() * 900000);
-      setOrderId(randomId);
-      setIsSubmitted(true);
+      setIsSubmitting(true);
+      setApiError("");
+      try {
+        const response = await fetch("/api/orders", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            items: cartItems,
+            subtotal: subtotal,
+            tax: tax,
+            total: total,
+          }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          setOrderId(data.order._id);
+          setIsSubmitted(true);
+        } else {
+          setApiError(data.error || "Failed to place order");
+        }
+      } catch (error) {
+        console.error("Error submitting order:", error);
+        setApiError("A network error occurred. Please try again.");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
   const handleCloseSuccess = () => {
+    const savedOrderId = orderId;
     // Reset states and clear the cart state
     setIsSubmitted(false);
     setFormData({ name: "", email: "", phone: "", address: "" });
     onClearCart();
     onClose();
+
+    // Redirect to dynamic tracking page
+    if (typeof window !== "undefined" && savedOrderId) {
+      window.location.href = `/order/${savedOrderId}`;
+    }
   };
 
   const backdropVariants = {
@@ -217,12 +253,20 @@ export default function CheckoutModal({
                     </div>
                   </div>
 
+                  {apiError && (
+                    <div className="text-red-400 font-bold text-xs text-center bg-red-500/10 border border-red-500/20 rounded-xl p-3 mt-2">
+                      {apiError}
+                    </div>
+                  )}
+
                   {/* Place Order Button */}
                   <button
                     type="submit"
-                    className="w-full py-4 bg-gradient-to-r from-[#FF7A00] to-[#FFB347] hover:scale-102 text-black font-heading font-black text-xs uppercase tracking-widest rounded-2xl shadow-[0_4px_25px_rgba(255,122,0,0.35)] transition-all duration-300 border-none cursor-pointer flex items-center justify-center gap-2 mt-2"
+                    disabled={isSubmitting}
+                    className="w-full py-4 bg-gradient-to-r from-[#FF7A00] to-[#FFB347] hover:scale-102 text-black font-heading font-black text-xs uppercase tracking-widest rounded-2xl shadow-[0_4px_25px_rgba(255,122,0,0.35)] transition-all duration-300 border-none cursor-pointer flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:pointer-events-none"
                   >
-                    <Flame className="w-4 h-4 fill-current" /> Place Order (Demo Mode)
+                    <Flame className={`w-4 h-4 fill-current ${isSubmitting ? "animate-spin" : ""}`} /> 
+                    {isSubmitting ? "Placing Order..." : "Place Order"}
                   </button>
                 </form>
               ) : (
