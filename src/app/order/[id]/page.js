@@ -136,6 +136,8 @@ export default function OrderTracking() {
           </h1>
           <p className="text-white/40 text-xs font-medium uppercase tracking-wider mt-1">
             Order ID: <span className="text-white font-bold">{order._id}</span>
+            <span className="mx-2 text-white/20">•</span>
+            Est. Delivery: <span className="text-[#FF7A00] font-black">{order.estimatedTime || "30 mins"}</span>
           </p>
         </div>
 
@@ -298,6 +300,10 @@ export default function OrderTracking() {
               <div className="flex justify-between items-center text-white/50">
                 <span>GST (18%)</span>
                 <span>₹{order.tax}</span>
+              </div>
+              <div className="flex justify-between items-center text-white/50">
+                <span>Payment Method</span>
+                <span className="font-bold text-white">{order.paymentMethod === "Online" ? "Paid Online" : "Cash on Delivery (COD)"}</span>
               </div>
               <div className="flex justify-between items-center pt-2.5 border-t border-white/5 text-sm font-heading font-black text-white">
                 <span className="uppercase">Paid Total</span>

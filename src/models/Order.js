@@ -42,6 +42,14 @@ const OrderSchema = new mongoose.Schema({
     enum: ["Received", "Cooking", "Out for Delivery", "Delivered"],
     default: "Received",
   },
+  estimatedTime: {
+    type: String,
+    default: "30 mins",
+  },
+  paymentMethod: {
+    type: String,
+    default: "COD",
+  },
   createdAt: {
     type: Date,
     default: Date.now,

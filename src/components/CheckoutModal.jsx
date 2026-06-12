@@ -21,6 +21,7 @@ export default function CheckoutModal({
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("COD");
 
   // Calculations
   const subtotal = cartItems.reduce(
@@ -77,6 +78,7 @@ export default function CheckoutModal({
             subtotal: subtotal,
             tax: tax,
             total: total,
+            paymentMethod: paymentMethod,
           }),
         });
         const data = await response.json();
@@ -231,7 +233,37 @@ export default function CheckoutModal({
                         errors.address ? "border-red-500/50" : "border-white/10"
                       } focus:border-[#FF7A00] rounded-xl px-4 py-3 text-white text-sm outline-none transition-all duration-300 resize-none`}
                     />
-                    {errors.address && <span className="text-[10px] text-red-400 font-bold">{errors.address}</span>}
+                  </div>
+
+                  {/* Payment Method Selector */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider">
+                      Payment Method
+                    </label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod("COD")}
+                        className={`py-3 rounded-xl font-heading font-black text-[10px] uppercase tracking-wider border transition-all duration-300 cursor-pointer ${
+                          paymentMethod === "COD"
+                            ? "bg-[#FF7A00]/10 border-[#FF7A00] text-[#FF7A00] shadow-[0_0_15px_rgba(255,122,0,0.15)]"
+                            : "bg-[#121212] border-white/10 text-white/50 hover:border-white/20"
+                        }`}
+                      >
+                        Cash on Delivery
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod("Online")}
+                        className={`py-3 rounded-xl font-heading font-black text-[10px] uppercase tracking-wider border transition-all duration-300 cursor-pointer ${
+                          paymentMethod === "Online"
+                            ? "bg-[#FF7A00]/10 border-[#FF7A00] text-[#FF7A00] shadow-[0_0_15px_rgba(255,122,0,0.15)]"
+                            : "bg-[#121212] border-white/10 text-white/50 hover:border-white/20"
+                        }`}
+                      >
+                        Online Payment
+                      </button>
+                    </div>
                   </div>
 
                   {/* Order summary mini drawer */}

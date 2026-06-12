@@ -78,6 +78,31 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleTimeChange = async (id, newTime) => {
+    try {
+      const response = await fetch(`/api/orders/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ estimatedTime: newTime }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setOrders(prev => 
+          prev.map(order => 
+            order._id === id ? { ...order, estimatedTime: newTime } : order
+          )
+        );
+      } else {
+        alert("Failed to update time: " + data.message);
+      }
+    } catch (err) {
+      console.error("Admin time patch error:", err);
+      alert("Network error updating time.");
+    }
+  };
+
   const toggleExpandOrder = (id) => {
     setExpandedOrder(expandedOrder === id ? null : id);
   };
@@ -246,7 +271,7 @@ export default function AdminDashboard() {
 
                       <div className="flex items-center justify-between md:justify-end gap-6">
                         <div className="flex flex-col text-left md:text-right">
-                          <span className="text-[10px] text-white/30 uppercase tracking-widest font-semibold">{itemsCount} Items</span>
+                          <span className="text-[10px] text-white/30 uppercase tracking-widest font-semibold">{itemsCount} Items • {order.paymentMethod || "COD"}</span>
                           <span className="text-sm font-heading font-black text-[#FF7A00]">₹{order.total}</span>
                         </div>
                         
@@ -284,6 +309,27 @@ export default function AdminDashboard() {
                             <div>
                               <span className="text-white/30 uppercase tracking-widest text-[8.5px] font-bold block mb-0.5">Delivery Address</span>
                               <span className="text-white/80 leading-relaxed">{order.address}</span>
+                            </div>
+
+                            {/* Estimated Delivery Time Modifier */}
+                            <div className="mt-4 pt-4 border-t border-white/5 flex flex-col gap-2">
+                              <span className="text-white/30 uppercase tracking-widest text-[8.5px] font-bold block">
+                                Est. Delivery Time
+                              </span>
+                              <select
+                                value={order.estimatedTime || "30 mins"}
+                                onChange={(e) => handleTimeChange(order._id, e.target.value)}
+                                className="bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#FF7A00] transition-colors duration-300 cursor-pointer"
+                              >
+                                <option value="15 mins">15 Mins</option>
+                                <option value="20 mins">20 Mins</option>
+                                <option value="30 mins">30 Mins (Default)</option>
+                                <option value="45 mins">45 Mins</option>
+                                <option value="60 mins">60 Mins</option>
+                                <option value="90 mins">90 Mins</option>
+                                <option value="Delayed">Delayed</option>
+                                <option value="Arrived">Arrived</option>
+                              </select>
                             </div>
                           </div>
                         </div>

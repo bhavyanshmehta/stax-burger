@@ -69,6 +69,8 @@ export async function createOrder(orderData) {
     tax: parseInt(orderData.tax),
     total: parseInt(orderData.total),
     status: orderData.status || "Received",
+    estimatedTime: orderData.estimatedTime || "30 mins",
+    paymentMethod: orderData.paymentMethod || "COD",
     createdAt: new Date().toISOString()
   };
 
@@ -82,12 +84,14 @@ export async function getOrderById(id) {
   return orders.find(order => order._id === id) || null;
 }
 
-export async function updateOrderStatus(id, status) {
+export async function updateOrderDetails(id, updateFields) {
   const orders = await getOrders();
   const index = orders.findIndex(order => order._id === id);
   if (index === -1) return null;
   
-  orders[index].status = status;
+  // Merge updates
+  orders[index] = { ...orders[index], ...updateFields };
+  
   await saveOrders(orders);
   return orders[index];
 }
