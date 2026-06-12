@@ -186,6 +186,11 @@ export default function CheckoutModal({
                 });
                 const orderData = await orderRes.json();
                 if (orderData.success) {
+                  if (orderData.isFallback) {
+                    const simOrders = JSON.parse(localStorage.getItem("stax_cart_orders") || "[]");
+                    simOrders.unshift(orderData.order);
+                    localStorage.setItem("stax_cart_orders", JSON.stringify(simOrders));
+                  }
                   setOrderId(orderData.order._id || orderData.order.id);
                   setCreatedOrder(orderData.order);
                   setIsSubmitted(true);
@@ -243,6 +248,11 @@ export default function CheckoutModal({
       });
       const data = await response.json();
       if (data.success) {
+        if (data.isFallback) {
+          const simOrders = JSON.parse(localStorage.getItem("stax_cart_orders") || "[]");
+          simOrders.unshift(data.order);
+          localStorage.setItem("stax_cart_orders", JSON.stringify(simOrders));
+        }
         setOrderId(data.order._id || data.order.id);
         setCreatedOrder(data.order);
         setIsSubmitted(true);

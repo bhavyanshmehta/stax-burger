@@ -115,11 +115,6 @@ export async function POST(req) {
       body.estimatedTime = calculatedTime;
       const order = await fallbackDb.createOrder(body);
 
-      // Save to cart orders list (specifically for checkout prefill fallback)
-      const simOrders = JSON.parse(localStorage.getItem("stax_cart_orders") || "[]");
-      simOrders.unshift(order);
-      localStorage.setItem("stax_cart_orders", JSON.stringify(simOrders));
-
       sendOrderUpdateNotification(order, null).catch(err => {
         console.error("Failed to trigger order confirmation notification:", err);
       });
