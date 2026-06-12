@@ -7,6 +7,8 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -14,10 +16,50 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const handleClose = () => {
+    setIsForgotPassword(false);
+    setForgotPasswordSuccess("");
+    setError("");
+    onClose();
+  };
+
   const handleAuth = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    if (isForgotPassword) {
+      if (!email.trim()) {
+        setError("Email address is required.");
+        setLoading(false);
+        return;
+      }
+
+      const hasKeys = isSupabaseConfigured();
+      if (hasKeys) {
+        try {
+          const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/reset-password`,
+          });
+
+          if (resetError) throw resetError;
+          setForgotPasswordSuccess("Password reset link sent to your email!");
+        } catch (err) {
+          console.error("Reset password error:", err);
+          setError(err.message || "Failed to send reset link.");
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Simulation Sandbox Reset
+        setTimeout(() => {
+          setForgotPasswordSuccess(`[Sandbox] Password reset email simulated for ${email}. Check console for instructions.`);
+          console.log(`[STAX Auth Sandbox] Password reset requested for: ${email}. To complete reset, visit: ${window.location.origin}/reset-password`);
+          setLoading(false);
+        }, 800);
+      }
+      return;
+    }
 
     if (!email.trim() || !password.trim()) {
       setError("Email and password are required.");
@@ -52,7 +94,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           
           if (data.user) {
             onAuthSuccess(data.user);
-            onClose();
+            handleClose();
           }
         } else {
           // Supabase Sign In
@@ -65,7 +107,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
 
           if (data.user) {
             onAuthSuccess(data.user);
-            onClose();
+            handleClose();
           }
         }
       } catch (err) {
@@ -77,11 +119,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     } else {
       // Simulation fallback mode (for zero-config testing)
       setTimeout(() => {
+        const emailLower = email.trim().toLowerCase();
+        const isSimAdmin = emailLower.includes("admin") || emailLower.endsWith("@stax.com");
         const mockUser = {
           id: "usr_mock_" + Math.random().toString(36).substring(2, 11),
           email: email.trim(),
+          role: isSimAdmin ? "admin" : "customer",
           user_metadata: {
-            name: isSignUp ? name.trim() : "Anshu Sharma",
+            name: isSignUp ? name.trim() : (isSimAdmin ? "Admin Staff" : "Anshu Sharma"),
             phone: isSignUp ? phone.trim() : "9876543210",
           },
         };
@@ -90,7 +135,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         localStorage.setItem("stax_simulated_user", JSON.stringify(mockUser));
         onAuthSuccess(mockUser);
         setLoading(false);
-        onClose();
+        handleClose();
       }, 800);
     }
   };
@@ -115,7 +160,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             animate="open"
             exit="closed"
             variants={backdropVariants}
-            onClick={onClose}
+            onClick={handleClose}
             className="fixed inset-0 bg-black/80 backdrop-blur-[12px]"
           />
 
@@ -133,10 +178,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             {/* Header */}
             <div className="flex justify-between items-center mb-6 relative z-10">
               <h3 className="font-heading font-black text-xl uppercase tracking-wider text-white m-0">
-                {isSignUp ? "Create Account" : "Welcome Back"}
+                {isForgotPassword 
+                  ? "Reset Password" 
+                  : isSignUp ? "Create Account" : "Welcome Back"}
               </h3>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="w-9 h-9 rounded-full border border-white/10 hover:border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/5 cursor-pointer transition-all duration-300"
               >
                 <X className="w-4 h-4" />
@@ -161,85 +208,144 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                 </div>
               )}
 
-              {isSignUp && (
-                <>
-                  {/* Name field */}
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5 pl-1">
-                      <User className="w-3 h-3 text-[#FF7A00]" /> Full Name
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Anshu Sharma"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-[#121212] border border-white/10 focus:border-[#FF7A00] rounded-xl px-4 py-3 text-white text-xs outline-none transition-all duration-300"
-                    />
-                  </div>
-
-                  {/* Phone field */}
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5 pl-1">
-                      <Phone className="w-3 h-3 text-[#FF7A00]" /> Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="9876543210"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full bg-[#121212] border border-white/10 focus:border-[#FF7A00] rounded-xl px-4 py-3 text-white text-xs outline-none transition-all duration-300"
-                    />
-                  </div>
-                </>
+              {forgotPasswordSuccess && (
+                <div className="text-green-400 font-bold text-xs text-center bg-green-500/10 border border-green-500/20 rounded-xl p-3">
+                  {forgotPasswordSuccess}
+                </div>
               )}
 
-              {/* Email field */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5 pl-1">
-                  <Mail className="w-3 h-3 text-[#FF7A00]" /> Email Address
-                </label>
-                <input
-                  type="email"
-                  placeholder="anshu@stax.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#121212] border border-white/10 focus:border-[#FF7A00] rounded-xl px-4 py-3 text-white text-xs outline-none transition-all duration-300"
-                />
-              </div>
+              {!isForgotPassword ? (
+                <>
+                  {isSignUp && (
+                    <>
+                      {/* Name field */}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5 pl-1">
+                          <User className="w-3 h-3 text-[#FF7A00]" /> Full Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Anshu Sharma"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className="w-full bg-[#121212] border border-white/10 focus:border-[#FF7A00] rounded-xl px-4 py-3 text-white text-xs outline-none transition-all duration-300"
+                        />
+                      </div>
 
-              {/* Password field */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5 pl-1">
-                  <Lock className="w-3 h-3 text-[#FF7A00]" /> Password
-                </label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#121212] border border-white/10 focus:border-[#FF7A00] rounded-xl px-4 py-3 text-white text-xs outline-none transition-all duration-300"
-                />
-              </div>
+                      {/* Phone field */}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5 pl-1">
+                          <Phone className="w-3 h-3 text-[#FF7A00]" /> Phone Number
+                        </label>
+                        <input
+                          type="tel"
+                          placeholder="9876543210"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="w-full bg-[#121212] border border-white/10 focus:border-[#FF7A00] rounded-xl px-4 py-3 text-white text-xs outline-none transition-all duration-300"
+                        />
+                      </div>
+                    </>
+                  )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 bg-gradient-to-r from-[#FF7A00] to-[#FFB347] hover:scale-102 text-black font-heading font-black text-xs uppercase tracking-widest rounded-xl shadow-[0_4px_20px_rgba(255,122,0,0.3)] transition-all duration-300 border-none cursor-pointer flex items-center justify-center gap-2 mt-2"
-              >
-                {loading ? "Authenticating..." : isSignUp ? "Create Account" : "Sign In"}
-              </button>
+                  {/* Email field */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5 pl-1">
+                      <Mail className="w-3 h-3 text-[#FF7A00]" /> Email Address
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="anshu@stax.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-[#121212] border border-white/10 focus:border-[#FF7A00] rounded-xl px-4 py-3 text-white text-xs outline-none transition-all duration-300"
+                    />
+                  </div>
 
-              {/* Toggle Switch */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setError("");
-                }}
-                className="bg-transparent border-none text-white/45 hover:text-white font-medium text-[11px] uppercase tracking-wider cursor-pointer text-center mt-3 transition-colors duration-200"
-              >
-                {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
-              </button>
+                  {/* Password field */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5 pl-1">
+                        <Lock className="w-3 h-3 text-[#FF7A00]" /> Password
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsForgotPassword(true);
+                          setError("");
+                          setForgotPasswordSuccess("");
+                        }}
+                        className="bg-transparent border-none text-[10px] text-[#FF7A00] hover:text-white uppercase tracking-widest font-black cursor-pointer transition-colors"
+                      >
+                        Forgot?
+                      </button>
+                    </div>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-[#121212] border border-white/10 focus:border-[#FF7A00] rounded-xl px-4 py-3 text-white text-xs outline-none transition-all duration-300"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 bg-gradient-to-r from-[#FF7A00] to-[#FFB347] hover:scale-102 text-black font-heading font-black text-xs uppercase tracking-widest rounded-xl shadow-[0_4px_20px_rgba(255,122,0,0.3)] transition-all duration-300 border-none cursor-pointer flex items-center justify-center gap-2 mt-2"
+                  >
+                    {loading ? "Authenticating..." : isSignUp ? "Create Account" : "Sign In"}
+                  </button>
+
+                  {/* Toggle Switch */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignUp(!isSignUp);
+                      setError("");
+                    }}
+                    className="bg-transparent border-none text-white/45 hover:text-white font-medium text-[11px] uppercase tracking-wider cursor-pointer text-center mt-3 transition-colors duration-200"
+                  >
+                    {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Forgot Password Flow */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5 pl-1">
+                      <Mail className="w-3 h-3 text-[#FF7A00]" /> Registered Email Address
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="anshu@stax.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-[#121212] border border-white/10 focus:border-[#FF7A00] rounded-xl px-4 py-3 text-white text-xs outline-none transition-all duration-300"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 bg-gradient-to-r from-[#FF7A00] to-[#FFB347] hover:scale-102 text-black font-heading font-black text-xs uppercase tracking-widest rounded-xl shadow-[0_4px_20px_rgba(255,122,0,0.3)] transition-all duration-300 border-none cursor-pointer flex items-center justify-center gap-2 mt-2"
+                  >
+                    {loading ? "Sending link..." : "Send Reset Link"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPassword(false);
+                      setError("");
+                      setForgotPasswordSuccess("");
+                    }}
+                    className="bg-transparent border-none text-white/45 hover:text-white font-medium text-[11px] uppercase tracking-wider cursor-pointer text-center mt-3 transition-colors duration-200"
+                  >
+                    Back to Sign In
+                  </button>
+                </>
+              )}
 
             </form>
           </motion.div>

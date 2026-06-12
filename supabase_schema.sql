@@ -29,8 +29,17 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     phone TEXT,
+    role TEXT DEFAULT 'customer' CHECK (role IN ('customer', 'admin')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Alter table to add role if it doesn't exist for upgrade compatibility
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='role') THEN
+        ALTER TABLE public.profiles ADD COLUMN role TEXT DEFAULT 'customer' CHECK (role IN ('customer', 'admin'));
+    END IF;
+END $$;
 
 -- 4. ADDRESSES TABLE
 CREATE TABLE IF NOT EXISTS public.addresses (
@@ -96,16 +105,20 @@ FOR EACH ROW
 EXECUTE FUNCTION public.set_order_number();
 
 
--- B. Auto-Create Profile on Supabase User Signup
+-- B. Auto-Create Profile on Supabase User Signup (With Role Determination)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, name, email, phone)
+    INSERT INTO public.profiles (id, name, email, phone, role)
     VALUES (
         NEW.id,
         COALESCE(NEW.raw_user_meta_data->>'name', 'Valued Customer'),
         NEW.email,
-        COALESCE(NEW.raw_user_meta_data->>'phone', '')
+        COALESCE(NEW.raw_user_meta_data->>'phone', ''),
+        CASE 
+            WHEN NEW.email LIKE '%@stax.com' OR NEW.email LIKE '%admin%' THEN 'admin'
+            ELSE 'customer'
+        END
     );
     RETURN NEW;
 END;
@@ -115,6 +128,28 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
 FOR EACH ROW
 EXECUTE FUNCTION public.handle_new_user();
+
+
+-- C. Prevent Self-Escalation of Roles
+CREATE OR REPLACE FUNCTION public.check_profile_role_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.role IS DISTINCT FROM NEW.role AND NOT (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND role = 'admin'
+        )
+    ) THEN
+        NEW.role := OLD.role;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER trigger_check_profile_role_update
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.check_profile_role_update();
 
 
 -- ====================================================================
@@ -135,8 +170,11 @@ ON public.products FOR SELECT USING (true);
 CREATE POLICY "Allow admin write access to products" 
 ON public.products FOR ALL 
 USING (
-    auth.jwt() ->> 'email' IN ('admin@stax.com', 'anshu@stax.com') 
-    OR auth.jwt() ->> 'email' LIKE '%@stax.com'
+    EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE public.profiles.id = auth.uid() 
+        AND public.profiles.role = 'admin'
+    )
 );
 
 -- Profiles Policies
@@ -161,8 +199,11 @@ ON public.orders FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow admin full access to orders" 
 ON public.orders FOR ALL 
 USING (
-    auth.jwt() ->> 'email' IN ('admin@stax.com', 'anshu@stax.com') 
-    OR auth.jwt() ->> 'email' LIKE '%@stax.com'
+    EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE public.profiles.id = auth.uid() 
+        AND public.profiles.role = 'admin'
+    )
 );
 
 -- Order Items Policies
@@ -180,7 +221,14 @@ CREATE POLICY "Allow public order item creation"
 ON public.order_items FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Allow admin full access to order items" 
-ON public.order_items FOR ALL USING (true);
+ON public.order_items FOR ALL 
+USING (
+    EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE public.profiles.id = auth.uid() 
+        AND public.profiles.role = 'admin'
+    )
+);
 
 
 -- ====================================================================
