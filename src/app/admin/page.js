@@ -24,6 +24,7 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [error, setError] = useState("");
+  const [isFallback, setIsFallback] = useState(false);
 
   const fetchOrders = async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true);
@@ -32,6 +33,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success) {
         setOrders(data.orders);
+        setIsFallback(!!data.isFallback);
         setError("");
       } else {
         setError(data.error || "Failed to load orders");
@@ -150,25 +152,64 @@ export default function AdminDashboard() {
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-6 mb-12 border-b border-white/5 pb-8">
           <div className="flex flex-col gap-2 text-left">
             <span className="flex items-center gap-2 text-[#FF7A00] font-heading font-black text-xs uppercase tracking-widest">
-              <Flame className="w-4 h-4 fill-current" /> STAX HQ
-            </span>
-            <h1 className="font-heading font-black text-4xl md:text-5xl text-white uppercase tracking-tighter leading-none m-0">
-              Kitchen Console
-            </h1>
-            <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mt-1">
-              Active Orders & Operations Center
-            </p>
-          </div>
+               <Flame className="w-4 h-4 fill-current" /> STAX HQ
+             </span>
+             <h1 className="font-heading font-black text-4xl md:text-5xl text-white uppercase tracking-tighter leading-none m-0">
+               Kitchen Console
+             </h1>
+             <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mt-1">
+               Active Orders & Operations Center
+             </p>
+           </div>
+ 
+           <div className="flex flex-wrap items-center gap-4 self-start sm:self-auto">
+             {/* Connection Status Badge */}
+             {isFallback ? (
+               <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 px-4 py-2.5 rounded-full text-yellow-500 font-bold text-[10px] uppercase tracking-wider">
+                 <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                 Local Fallback DB Active
+               </div>
+             ) : (
+               <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 px-4 py-2.5 rounded-full text-green-400 font-bold text-[10px] uppercase tracking-wider">
+                 <span className="w-2 h-2 rounded-full bg-green-500" />
+                 MongoDB Connected
+               </div>
+             )}
 
-          <button
-            onClick={() => fetchOrders(true)}
-            disabled={refreshing}
-            className="flex items-center gap-2 bg-[#121212] hover:bg-[#FF7A00]/10 border border-white/10 hover:border-[#FF7A00]/40 text-white font-heading font-black text-xs uppercase tracking-widest px-6 py-3.5 rounded-full transition-all duration-300 cursor-pointer self-start"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-[#FF7A00]" : ""}`} />
-            Refresh Logs
-          </button>
-        </div>
+             <button
+               onClick={() => fetchOrders(true)}
+               disabled={refreshing}
+               className="flex items-center gap-2 bg-[#121212] hover:bg-[#FF7A00]/10 border border-white/10 hover:border-[#FF7A00]/40 text-white font-heading font-black text-xs uppercase tracking-widest px-6 py-3.5 rounded-full transition-all duration-300 cursor-pointer"
+             >
+               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-[#FF7A00]" : ""}`} />
+               Refresh Logs
+             </button>
+           </div>
+         </div>
+
+         {/* Fallback DB Active Client Onboarding Banner */}
+         {isFallback && (
+           <div className="bg-[#FF7A00]/5 border border-[#FF7A00]/20 rounded-[2rem] p-6 mb-12 text-left relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[0_10px_30px_rgba(255,122,0,0.02)]">
+             <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF7A00]/5 rounded-full filter blur-3xl pointer-events-none" />
+             <div className="flex-1 flex flex-col gap-1">
+               <h4 className="font-heading font-black text-xs uppercase tracking-wider text-[#FF7A00] m-0 flex items-center gap-2">
+                 ⚠️ Development Environment — Temporary Database Active
+               </h4>
+               <p className="text-white/60 text-xs leading-relaxed max-w-3xl m-0 font-medium">
+                 The website is running on the local fallback JSON engine. Orders are saved temporarily. 
+                 To switch to production MongoDB for client handover, add the <code className="bg-white/5 border border-white/10 px-1.5 py-0.5 rounded font-mono text-white text-[10px]">MONGODB_URI</code> environment variable to your deployment configurations.
+               </p>
+             </div>
+             <a 
+               href="https://github.com/bhavyanshmehta/stax-burger#installation--local-setup" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               className="flex-shrink-0 bg-[#FF7A00]/10 hover:bg-[#FF7A00]/20 border border-[#FF7A00]/30 hover:border-[#FF7A00]/50 text-[#FF7A00] font-heading font-black text-[10px] uppercase tracking-widest px-5 py-3 rounded-xl transition-all duration-300 no-underline text-center"
+             >
+               Setup Guide
+             </a>
+           </div>
+         )}
 
         {/* Error Alert */}
         {error && (
@@ -309,27 +350,30 @@ export default function AdminDashboard() {
                             <div>
                               <span className="text-white/30 uppercase tracking-widest text-[8.5px] font-bold block mb-0.5">Delivery Address</span>
                               <span className="text-white/80 leading-relaxed">{order.address}</span>
-                            </div>
-
-                            {/* Estimated Delivery Time Modifier */}
-                            <div className="mt-4 pt-4 border-t border-white/5 flex flex-col gap-2">
-                              <span className="text-white/30 uppercase tracking-widest text-[8.5px] font-bold block">
-                                Est. Delivery Time
-                              </span>
-                              <select
-                                value={order.estimatedTime || "30 mins"}
-                                onChange={(e) => handleTimeChange(order._id, e.target.value)}
-                                className="bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#FF7A00] transition-colors duration-300 cursor-pointer"
-                              >
-                                <option value="15 mins">15 Mins</option>
-                                <option value="20 mins">20 Mins</option>
-                                <option value="30 mins">30 Mins (Default)</option>
-                                <option value="45 mins">45 Mins</option>
-                                <option value="60 mins">60 Mins</option>
-                                <option value="90 mins">90 Mins</option>
-                                <option value="Delayed">Delayed</option>
-                                <option value="Arrived">Arrived</option>
-                              </select>
+                              {/* Estimated Delivery Time Modifier */}
+                              <div className="mt-4 pt-4 border-t border-white/5 flex flex-col gap-2">
+                                <span className="text-white/30 uppercase tracking-widest text-[8.5px] font-bold block">
+                                  Est. Delivery Time
+                                </span>
+                                <select
+                                  value={order.estimatedTime || "30 mins"}
+                                  onChange={(e) => handleTimeChange(order._id, e.target.value)}
+                                  className="bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#FF7A00] transition-colors duration-300 cursor-pointer"
+                                >
+                                  {/* Prevent empty dropdown selectors for dynamically calculated custom time slots */}
+                                  {order.estimatedTime && !["15 mins", "20 mins", "30 mins", "45 mins", "60 mins", "90 mins", "Delayed", "Arrived"].includes(order.estimatedTime) && (
+                                    <option value={order.estimatedTime}>{order.estimatedTime.replace("mins", "Mins")}</option>
+                                  )}
+                                  <option value="15 mins">15 Mins</option>
+                                  <option value="20 mins">20 Mins</option>
+                                  <option value="30 mins">30 Mins (Default)</option>
+                                  <option value="45 mins">45 Mins</option>
+                                  <option value="60 mins">60 Mins</option>
+                                  <option value="90 mins">90 Mins</option>
+                                  <option value="Delayed">Delayed</option>
+                                  <option value="Arrived">Arrived</option>
+                                </select>
+                              </div>
                             </div>
                           </div>
                         </div>

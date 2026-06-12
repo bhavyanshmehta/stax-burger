@@ -81,5 +81,49 @@ stax-burger/
 
 ---
 
+## ⚙️ Production Configuration & Handover Guide
+
+This application is built for real production usage. It is pre-configured with a "Simulation Mode" (using a local database and mock payments/notifications) so it works out-of-the-box, but can be fully connected to live services by setting the following environment variables in your production environment (e.g. Vercel, Netlify) or local `.env.local`:
+
+### 1. Persistent Database (MongoDB)
+1. Register a database cluster on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
+2. Retrieve your connection connection string.
+3. Set the environment variable:
+   ```env
+   MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/stax
+   ```
+4. Once set, the application will automatically switch from the temporary local filesystem database to your persistent, production-grade MongoDB.
+
+### 2. Live Payment Gateway (Razorpay)
+1. Create a merchant account on [Razorpay](https://razorpay.com/).
+2. Generate API keys (Key ID and Key Secret) from your Razorpay Dashboard.
+3. Set the environment variables:
+   ```env
+   NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_XXXXXXXX
+   RAZORPAY_KEY_SECRET=XXXXXXXXXXXXXXXXXXXX
+   ```
+4. Once configured, selecting "Online Payment" during checkout will trigger the official secure Razorpay popup checkout (supporting Credit Cards, UPI, Netbanking). If left empty, checkout automatically runs in sandbox simulation mode.
+
+### 3. Customer SMS Alerts (Twilio)
+1. Set up a number on [Twilio](https://www.twilio.com/).
+2. Obtain your Account SID, Auth Token, and verified Twilio phone number.
+3. Set the environment variables:
+   ```env
+   TWILIO_ACCOUNT_SID=ACXXXXXXXXXXXXXXXXXX
+   TWILIO_AUTH_TOKEN=XXXXXXXXXXXXXXXXXXXX
+   TWILIO_FROM_NUMBER=+1XXXXXXXXXX
+   ```
+4. Customers will receive real-time SMS updates when their order moves through stages (Flame Grilling, Dispatched, Delivered).
+
+### 4. Customer Email Receipts (Resend)
+1. Create an account on [Resend](https://resend.com/) and register your business domain.
+2. Obtain your API Key and configure:
+   ```env
+   EMAIL_API_KEY=re_XXXXXXXXXXXXXXXXXXXX
+   EMAIL_FROM_ADDRESS=STAX Burgers <orders@yourdomain.com>
+   ```
+
+---
+
 ## 📄 License
 This project is open-source and distributed under the MIT License.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import Order from "@/models/Order";
+import { sendOrderUpdateNotification } from "@/lib/notifications";
 import * as fallbackDb from "@/lib/db-fallback";
 
 export async function GET(req, { params }) {
@@ -45,19 +46,30 @@ export async function PATCH(req, { params }) {
     }
 
     const { isFallback } = await connectToDatabase();
+    let previousStatus = null;
+    let order = null;
 
     if (isFallback) {
-      const order = await fallbackDb.updateOrderDetails(id, updateFields);
-      if (!order) {
-        return NextResponse.json({ success: false, message: "Order not found" }, { status: 404 });
-      }
-      return NextResponse.json({ success: true, order }, { status: 200 });
+      const oldOrder = await fallbackDb.getOrderById(id);
+      if (oldOrder) previousStatus = oldOrder.status;
+      order = await fallbackDb.updateOrderDetails(id, updateFields);
+    } else {
+      const oldOrder = await Order.findById(id);
+      if (oldOrder) previousStatus = oldOrder.status;
+      order = await Order.findByIdAndUpdate(id, updateFields, { new: true, runValidators: true });
     }
 
-    const order = await Order.findByIdAndUpdate(id, updateFields, { new: true, runValidators: true });
     if (!order) {
       return NextResponse.json({ success: false, message: "Order not found" }, { status: 404 });
     }
+
+    // Trigger order update notification (SMS & Email) asynchronously
+    if (status && status !== previousStatus) {
+      sendOrderUpdateNotification(order, previousStatus).catch(err => {
+        console.error("Failed to send order status update notification:", err);
+      });
+    }
+
     return NextResponse.json({ success: true, order }, { status: 200 });
   } catch (error) {
     console.error("API PATCH order details error:", error);

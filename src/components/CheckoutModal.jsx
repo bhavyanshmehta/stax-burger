@@ -18,6 +18,7 @@ export default function CheckoutModal({
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [orderId, setOrderId] = useState("");
+  const [createdOrder, setCreatedOrder] = useState(null);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -58,42 +59,155 @@ export default function CheckoutModal({
     }
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (typeof window === "undefined") {
+        resolve(false);
+        return;
+      }
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validate()) {
-      setIsSubmitting(true);
-      setApiError("");
-      try {
-        const response = await fetch("/api/orders", {
+    if (!validate()) return;
+
+    setIsSubmitting(true);
+    setApiError("");
+
+    try {
+      if (paymentMethod === "Online") {
+        // 1. Initiate Razorpay order creation on server
+        const payRes = await fetch("/api/payments/razorpay", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            address: formData.address,
-            items: cartItems,
-            subtotal: subtotal,
-            tax: tax,
-            total: total,
-            paymentMethod: paymentMethod,
-          }),
+          body: JSON.stringify({ amount: total }),
         });
-        const data = await response.json();
-        if (data.success) {
-          setOrderId(data.order._id);
-          setIsSubmitted(true);
+        const payData = await payRes.json();
+
+        if (payData.success && !payData.isSimulated) {
+          // Razorpay credentials exist, trigger checkout popup
+          const scriptLoaded = await loadRazorpayScript();
+          if (!scriptLoaded) {
+            setApiError("Failed to initialize payment gateway SDK. Please check your connection.");
+            setIsSubmitting(false);
+            return;
+          }
+
+          const options = {
+            key: payData.keyId,
+            amount: payData.order.amount,
+            currency: payData.order.currency,
+            name: "STAX Burger Co.",
+            description: "Premium Flame-Grilled Burger Order",
+            order_id: payData.order.id,
+            handler: async function (response) {
+              try {
+                // Register the finalized order in the database
+                const orderRes = await fetch("/api/orders", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    name: formData.name,
+                    email: formData.email,
+                    phone: formData.phone,
+                    address: formData.address,
+                    items: cartItems,
+                    subtotal: subtotal,
+                    tax: tax,
+                    total: total,
+                    paymentMethod: "Online",
+                    paymentDetails: {
+                      paymentId: response.razorpay_payment_id,
+                      orderId: response.razorpay_order_id,
+                      signature: response.razorpay_signature,
+                      status: "Paid",
+                    },
+                  }),
+                });
+                const orderData = await orderRes.json();
+                if (orderData.success) {
+                  setOrderId(orderData.order._id);
+                  setCreatedOrder(orderData.order);
+                  setIsSubmitted(true);
+                } else {
+                  setApiError(orderData.error || "Failed to register paid order.");
+                }
+              } catch (error) {
+                console.error("Order completion error:", error);
+                setApiError("Payment succeeded, but the order registration timed out. Please contact store support.");
+              } finally {
+                setIsSubmitting(false);
+              }
+            },
+            prefill: {
+              name: formData.name,
+              email: formData.email,
+              contact: formData.phone,
+            },
+            theme: {
+              color: "#FF7A00",
+            },
+            modal: {
+              ondismiss: function () {
+                setIsSubmitting(false);
+              },
+            },
+          };
+
+          const rzp = new window.Razorpay(options);
+          rzp.open();
+          return; // Await checkout handler callback
         } else {
-          setApiError(data.error || "Failed to place order");
+          console.log("Razorpay credentials absent. Progressing in simulation mode.");
         }
-      } catch (error) {
-        console.error("Error submitting order:", error);
-        setApiError("A network error occurred. Please try again.");
-      } finally {
-        setIsSubmitting(false);
       }
+
+      // 2. Direct database record injection for COD or Simulation Mode
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          items: cartItems,
+          subtotal: subtotal,
+          tax: tax,
+          total: total,
+          paymentMethod: paymentMethod === "Online" ? "Online (Simulated)" : "COD",
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setOrderId(data.order._id);
+        setCreatedOrder(data.order);
+        setIsSubmitted(true);
+      } else {
+        setApiError(data.error || "Failed to place order.");
+      }
+    } catch (error) {
+      console.error("Error submitting order:", error);
+      setApiError("A network error occurred. Please verify your connection.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -101,6 +215,7 @@ export default function CheckoutModal({
     const savedOrderId = orderId;
     // Reset states and clear the cart state
     setIsSubmitted(false);
+    setCreatedOrder(null);
     setFormData({ name: "", email: "", phone: "", address: "" });
     onClearCart();
     onClose();
@@ -332,7 +447,7 @@ export default function CheckoutModal({
                       </div>
                       <div className="text-right">
                         <span className="text-[9px] text-white/30 font-bold uppercase tracking-widest block">Est. Delivery</span>
-                        <span className="text-sm font-bold text-[#FF7A00]">25-30 Mins</span>
+                        <span className="text-sm font-bold text-[#FF7A00]">{createdOrder?.estimatedTime || "30 mins"}</span>
                       </div>
                     </div>
 
